@@ -655,27 +655,27 @@ const Pages = {
             </div>
         `;
 
-        document.getElementById('profileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            try {
-                UI.showLoading();
-                await API.updateProfile({
-                    efootballId: formData.get('efootballId'),
-                    phoneNumber: formData.get('phoneNumber')
-                });
-
-                // Update localStorage with new values
-const updatedUser = { ...Auth.getUser(), efootballId: formData.get('efootballId'), phoneNumber: formData.get('phoneNumber') };
-Auth.setAuth(Auth.getToken(), updatedUser);
-                UI.showToast('Profile updated!', 'success');
-            } catch (error) {
-                UI.showToast(error.message, 'error');
-            } finally {
-                UI.hideLoading();
-            }
-        });
+       document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const efootballId = formData.get('efootballId');
+    const phoneNumber = formData.get('phoneNumber');
+    
+    try {
+        UI.showLoading();
+        await API.updateProfile({ efootballId, phoneNumber });
+        
+        // Update localStorage with new values
+        const updatedUser = { ...Auth.getUser(), efootballId, phoneNumber };
+        Auth.setAuth(Auth.getToken(), updatedUser);
+        
+        UI.showToast('Profile updated!', 'success');
+    } catch (error) {
+        UI.showToast(error.message, 'error');
+    } finally {
+        UI.hideLoading();
+    }
+});
     }
 };
 

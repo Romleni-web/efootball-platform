@@ -194,5 +194,4 @@ const API = {
         }
         return data;
     }
-
 };
