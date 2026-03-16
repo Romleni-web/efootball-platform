@@ -665,6 +665,10 @@ const Pages = {
                     efootballId: formData.get('efootballId'),
                     phoneNumber: formData.get('phoneNumber')
                 });
+
+                // Update localStorage with new values
+const updatedUser = { ...Auth.getUser(), efootballId: formData.get('efootballId'), phoneNumber: formData.get('phoneNumber') };
+Auth.setAuth(Auth.getToken(), updatedUser);
                 UI.showToast('Profile updated!', 'success');
             } catch (error) {
                 UI.showToast(error.message, 'error');
