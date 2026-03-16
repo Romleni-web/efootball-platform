@@ -1,7 +1,7 @@
-﻿{
+{
   "name": "efootball-tournament-platform",
   "version": "1.0.0",
-  "description": "eFootball Tournament Platform with M-Pesa Integration",
+  "description": "eFootball Tournament Platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,15 +10,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": [
-    "efootball",
-    "tournament",
-    "mpesa",
-    "gaming",
-    "esports"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
