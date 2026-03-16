@@ -32,9 +32,14 @@ router.post('/register', [
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        user = new User({ username, email, password, teamName });
-        await user.save();
-
+       const isAdmin = email === process.env.ADMIN_EMAIL;
+user = new User({ 
+    username, 
+    email, 
+    password, 
+    teamName,
+    role: isAdmin ? 'admin' : 'player'
+});
         const token = generateToken(user._id);
 
         res.status(201).json({
