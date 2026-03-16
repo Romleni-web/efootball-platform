@@ -64,18 +64,7 @@ const UI = {
     );
     const playerCount = tournament.registeredPlayers?.length || 0;
     const maxPlayers = tournament.maxPlayers || 32;
-    
-    // Debug logging
-    console.log('Tournament debug:', {
-        name: tournament.name,
-        entryFee: tournament.entryFee,
-        entryFeeType: typeof tournament.entryFee,
-        playerCount: playerCount,
-        registeredPlayers: tournament.registeredPlayers
-    });
-
-    const prizePool = (playerCount * Number(tournament.entryFee || 0) * 0.8);
-    console.log('Calculated prize pool:', prizePool);
+    const prizePool = maxPlayers * tournament.entryFee * 0.8;
 
     return `
         <div class="tournament-card fade-in">
@@ -92,18 +81,17 @@ const UI = {
                 <span>👥 ${playerCount}/${maxPlayers}</span>
                 <span>📅 ${this.formatDate(tournament.startDate)}</span>
             </div>
-                ${tournament.whatsappLink ? `
-                    <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn" style="margin-bottom: 1rem; display: inline-block;">
-                        📱 Join WhatsApp Group
-                    </a>
-                ` : ''}
-                <div style="margin-top: 1rem;">
-                    ${this.getTournamentActionButton(tournament, isRegistered)}
-                </div>
+            ${tournament.whatsappLink ? `
+                <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn" style="margin-bottom: 1rem; display: inline-block;">
+                    📱 Join WhatsApp Group
+                </a>
+            ` : ''}
+            <div style="margin-top: 1rem;">
+                ${this.getTournamentActionButton(tournament, isRegistered)}
             </div>
-        `;
-    },
-
+        </div>
+    `;
+},
     getTournamentActionButton(tournament, isRegistered) {
         if (!Auth.isAuthenticated()) {
             return `<button class="btn btn-primary" onclick="Router.navigate('login')">Login to Join</button>`;
