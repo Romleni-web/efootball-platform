@@ -665,10 +665,6 @@ const Pages = {
         UI.showLoading();
         await API.updateProfile({ efootballId, phoneNumber });
         
-        // Update localStorage with new values
-        const updatedUser = { ...Auth.getUser(), efootballId, phoneNumber };
-        Auth.setAuth(Auth.getToken(), updatedUser);
-        
         UI.showToast('Profile updated!', 'success');
     } catch (error) {
         UI.showToast(error.message, 'error');
