@@ -1,24 +1,43 @@
-// Point to backend URL
-const API_BASE_URL = 'https://efootball-api.onrender.com/api';
+// Auto-detect API URL
+const API_BASE_URL = (() => {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:5000/api';
+    }
+    // Production - use same domain
+    return `${window.location.protocol}//${hostname}/api`;
+})();
+
+console.log('API URL:', API_BASE_URL); // Debug log
 
 const API = {
     // Auth
     async register(userData) {
-        const response = await fetch(`${API_BASE_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData)
-        });
-        return this.handleResponse(response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            });
+            return this.handleResponse(response);
+        } catch (error) {
+            console.error('Register error:', error);
+            throw new Error('Cannot connect to server. Please try again.');
+        }
     },
 
     async login(credentials) {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(credentials)
-        });
-        return this.handleResponse(response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            });
+            return this.handleResponse(response);
+        } catch (error) {
+            console.error('Login error:', error);
+            throw new Error('Cannot connect to server. Please try again.');
+        }
     },
 
     async getMe() {
@@ -156,7 +175,7 @@ const API = {
             ...options.headers
         };
 
-        if (includeJson && !options.body?.constructor?.name === 'FormData') {
+        if (includeJson && !(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
         }
 
