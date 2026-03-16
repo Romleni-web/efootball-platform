@@ -70,7 +70,7 @@ const UI = {
                 <div class="tournament-header">
                     <div>
                         <h3 class="tournament-title">${tournament.name}</h3>
-                        <div class="prize-pool">🏆 ${this.formatCurrency((tournament.registeredPlayers?.length || 0) * tournament.entryFee * 0.8)}
+                        <div class="prize-pool">🏆 ${this.formatCurrency(tournament.prizePool || tournament.entryFee * 0.8)}
                     </div>
                     <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
                 </div>
