@@ -58,28 +58,40 @@ const UI = {
         });
     },
 
-    renderTournamentCard(tournament) {
-        const isRegistered = tournament.registeredPlayers?.some(
-            p => p.user?._id === Auth.getUser()?._id
-        );
-        const playerCount = tournament.registeredPlayers?.length || 0;
-        const maxPlayers = tournament.maxPlayers || 32;
+  renderTournamentCard(tournament) {
+    const isRegistered = tournament.registeredPlayers?.some(
+        p => p.user?._id === Auth.getUser()?._id
+    );
+    const playerCount = tournament.registeredPlayers?.length || 0;
+    const maxPlayers = tournament.maxPlayers || 32;
+    
+    // Debug logging
+    console.log('Tournament debug:', {
+        name: tournament.name,
+        entryFee: tournament.entryFee,
+        entryFeeType: typeof tournament.entryFee,
+        playerCount: playerCount,
+        registeredPlayers: tournament.registeredPlayers
+    });
 
-        return `
-            <div class="tournament-card fade-in">
-                <div class="tournament-header">
-                    <div>
-                        <h3 class="tournament-title">${tournament.name}</h3>
-                        <div class="prize-pool">🏆 ${this.formatCurrency((tournament.registeredPlayers?.length || 0) * tournament.entryFee * 0.8)}</div>
-                    </div>
-                    <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
+    const prizePool = (playerCount * Number(tournament.entryFee || 0) * 0.8);
+    console.log('Calculated prize pool:', prizePool);
+
+    return `
+        <div class="tournament-card fade-in">
+            <div class="tournament-header">
+                <div>
+                    <h3 class="tournament-title">${tournament.name}</h3>
+                    <div class="prize-pool">🏆 ${this.formatCurrency(prizePool)}</div>
                 </div>
-                <p style="color: var(--gray); margin-bottom: 1rem;">${tournament.description || 'No description'}</p>
-                <div class="tournament-meta">
-                    <span>💰 Entry: ${this.formatCurrency(tournament.entryFee)}</span>
-                    <span>👥 ${playerCount}/${maxPlayers}</span>
-                    <span>📅 ${this.formatDate(tournament.startDate)}</span>
-                </div>
+                <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
+            </div>
+            <p style="color: var(--gray); margin-bottom: 1rem;">${tournament.description || 'No description'}</p>
+            <div class="tournament-meta">
+                <span>💰 Entry: ${this.formatCurrency(tournament.entryFee)}</span>
+                <span>👥 ${playerCount}/${maxPlayers}</span>
+                <span>📅 ${this.formatDate(tournament.startDate)}</span>
+            </div>
                 ${tournament.whatsappLink ? `
                     <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn" style="margin-bottom: 1rem; display: inline-block;">
                         📱 Join WhatsApp Group
