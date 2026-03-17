@@ -1,37 +1,34 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
 const auth = async (req, res, next) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
+        const authHeader = req.header('Authorization');
+        console.log('Auth header received:', authHeader ? 'Present' : 'Missing');
+        
+        const token = authHeader?.replace('Bearer ', '');
         
         if (!token) {
+            console.log('No token found in header');
             return res.status(401).json({ message: 'No token, authorization denied' });
         }
 
+        console.log('Token extracted:', token.substring(0, 20) + '...');
+        console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+        console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length);
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
+        console.log('Token decoded successfully:', decoded);
+        
         const user = await User.findById(decoded.id).select('-password');
         
         if (!user) {
-            return res.status(401).json({ message: 'Token is not valid' });
+            console.log('User not found for ID:', decoded.id);
+            return res.status(401).json({ message: 'Token is not valid - user not found' });
         }
 
+        console.log('User found:', user.email || user._id);
         req.user = user;
         next();
     } catch (error) {
-        res.status(401).json({ message: 'Token is not valid' });
+        console.error('Auth middleware error:', error.message);
+        res.status(401).json({ message: 'Token is not valid: ' + error.message });
     }
 };
-
-const adminOnly = async (req, res, next) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Admin access required' });
-        }
-        next();
-    } catch (error) {
-        res.status(403).json({ message: 'Admin access required' });
-    }
-};
-
-module.exports = { auth, adminOnly };
