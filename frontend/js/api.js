@@ -10,30 +10,6 @@ const API_BASE_URL = (() => {
 
 console.log('API URL:', API_BASE_URL); // Debug log
 
-// Auth helper - ADDED THIS
-const Auth = {
-    getToken() {
-        return localStorage.getItem('token');
-    },
-    
-    setToken(token) {
-        localStorage.setItem('token', token);
-    },
-    
-    removeToken() {
-        localStorage.removeItem('token');
-    },
-    
-    isLoggedIn() {
-        return !!this.getToken();
-    },
-    
-    logout() {
-        this.removeToken();
-        window.location.href = 'login.html';
-    }
-};
-
 const API = {
     // Auth
     async register(userData) {
@@ -212,13 +188,6 @@ const API = {
     },
 
     async handleResponse(response) {
-        // Handle 401 - token expired or invalid - ADDED THIS
-        if (response.status === 401) {
-            Auth.removeToken();
-            window.location.href = 'login.html';
-            throw new Error('Session expired. Please login again.');
-        }
-        
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.message || 'Something went wrong');
