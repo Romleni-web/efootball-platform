@@ -28,7 +28,7 @@ const adminOnly = async (req, res, next) => {
 };
 
 // POST /api/payments/entry
-router.post('/entry', auth, require('../middleware/upload').single('screenshot'), [
+router.post('/entry', require('../middleware/upload').single('screenshot'), auth, [
     body('tournamentId').notEmpty(),
     body('mpesaNumber').notEmpty(),
     body('transactionCode').trim().isLength({ min: 5 })
