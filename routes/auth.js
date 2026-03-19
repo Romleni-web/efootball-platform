@@ -6,8 +6,8 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 
 // Generate JWT
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'efootball_secret_key', {
+const generateToken = (userId) => {
+    return jwt.sign({ id: userId.toString() }, process.env.JWT_SECRET || 'efootball_secret_key', {
         expiresIn: '7d'
     });
 };
@@ -32,14 +32,18 @@ router.post('/register', [
             return res.status(400).json({ message: 'User already exists' });
         }
 
-       const isAdmin = email === process.env.ADMIN_EMAIL;
-user = new User({ 
-    username, 
-    email, 
-    password, 
-    teamName,
-    role: isAdmin ? 'admin' : 'player'
-});
+        const isAdmin = email === process.env.ADMIN_EMAIL;
+        user = new User({ 
+            username, 
+            email, 
+            password, 
+            teamName,
+            role: isAdmin ? 'admin' : 'player'
+        });
+
+        // CRITICAL FIX: Save user to database before generating token
+        await user.save();
+
         const token = generateToken(user._id);
 
         res.status(201).json({
@@ -53,7 +57,7 @@ user = new User({
             }
         });
     } catch (error) {
-        console.error(error);
+        console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -110,11 +114,14 @@ router.get('/me', async (req, res) => {
         if (!authHeader) {
             return res.status(401).json({ message: 'No token' });
         }
-        
+
         const token = authHeader.replace('Bearer ', '');
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
-        const user = await User.findById(decoded.id).select('-password');
-        
+
+        // Handle both id and _id in token payload
+        const userId = decoded.id || decoded._id || decoded.userId;
+        const user = await User.findById(userId).select('-password');
+
         if (!user) {
             return res.status(401).json({ message: 'Token is not valid' });
         }
