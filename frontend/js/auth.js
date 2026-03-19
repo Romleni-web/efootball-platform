@@ -65,17 +65,25 @@ const Auth = {
         Router.navigate('home');
         UI.showToast('Logged out successfully', 'success');
     },
-
+    
     async init() {
-        const token = this.getToken();
-        if (token) {
-            try {
-                const user = await API.getMe();
-                this.setAuth(token, user);
-            } catch (error) {
+    const token = this.getToken();
+    if (token) {
+        try {
+            const user = await API.getMe();
+            this.setAuth(token, user);
+        } catch (error) {
+            // Only clear auth if token is actually invalid, not for network errors
+            if (error.message.includes('Token is not valid') || error.message.includes('401')) {
+                console.log('Token invalid, clearing auth');
                 this.clearAuth();
+            } else {
+                console.log('API error but keeping token:', error.message);
+                // Keep existing auth for transient errors
             }
         }
-        this.updateUI();
     }
+    this.updateUI();
+}
+    
 };
