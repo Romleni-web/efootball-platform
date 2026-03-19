@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
+const Match = require('../models/Match');
 const jwt = require('jsonwebtoken');
 
 // Middleware to verify token
@@ -43,6 +44,163 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// POST /api/tournaments/:id/register - RACE-CONDITION-PROOF REGISTRATION
+router.post('/:id/register', auth, async (req, res) => {
+    const tournamentId = req.params.id;
+    const userId = req.user._id;
+
+    try {
+        // ATOMIC CHECK-AND-UPDATE: Check capacity AND not already registered, then add
+        const result = await Tournament.findOneAndUpdate(
+            {
+                _id: tournamentId,
+                status: 'open',
+                // Check tournament is not full
+                $expr: { $lt: [{ $size: '$registeredPlayers' }, '$maxPlayers'] },
+                // Check user is NOT already registered
+                'registeredPlayers.user': { $ne: userId }
+            },
+            {
+                $push: {
+                    registeredPlayers: {
+                        user: userId,
+                        paid: false,
+                        registeredAt: new Date()
+                    }
+                }
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        // If findOneAndUpdate returned null, determine why
+        if (!result) {
+            const tournament = await Tournament.findById(tournamentId);
+            
+            if (!tournament) {
+                return res.status(404).json({ message: 'Tournament not found' });
+            }
+            
+            if (tournament.status !== 'open') {
+                return res.status(400).json({ message: `Tournament is ${tournament.status}` });
+            }
+            
+            // Check if already registered
+            const alreadyRegistered = tournament.registeredPlayers.some(
+                rp => rp.user.toString() === userId.toString()
+            );
+            if (alreadyRegistered) {
+                return res.status(400).json({ message: 'Already registered for this tournament' });
+            }
+            
+            // Must be full
+            return res.status(400).json({ message: 'Tournament is full' });
+        }
+
+        // SUCCESS
+        const currentCount = result.registeredPlayers.length;
+        
+        res.json({ 
+            success: true, 
+            message: 'Registered successfully',
+            tournament: {
+                _id: result._id,
+                name: result.name,
+                registeredCount: currentCount,
+                maxPlayers: result.maxPlayers,
+                spotsRemaining: result.maxPlayers - currentCount
+            }
+        });
+
+        // SIDE EFFECT: Check if just became full and generate bracket
+        if (currentCount >= result.maxPlayers) {
+            // Use setImmediate to not block response
+            setImmediate(() => closeTournamentAndGenerateBracket(tournamentId));
+        }
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ message: 'Registration failed' });
+    }
+});
+
+// Helper function: Close tournament and generate bracket
+async function closeTournamentAndGenerateBracket(tournamentId) {
+    try {
+        // Atomically update status to prevent double-processing
+        const tournament = await Tournament.findOneAndUpdate(
+            {
+                _id: tournamentId,
+                status: 'open'  // Only if still open
+            },
+            {
+                status: 'ongoing',
+                bracketGeneratedAt: new Date()
+            },
+            { new: true }
+        );
+
+        if (!tournament) {
+            console.log(`Tournament ${tournamentId} already closed or bracket generated`);
+            return;
+        }
+
+        // Get all registered players
+        const players = tournament.registeredPlayers.map(rp => rp.user);
+
+        if (players.length !== tournament.maxPlayers) {
+            console.log(`Warning: Tournament ${tournamentId} has ${players.length}/${tournament.maxPlayers} players`);
+            return;
+        }
+
+        // Generate single elimination bracket
+        const bracket = generateSingleEliminationBracket(players);
+        
+        // Create matches in database
+        const matchDocs = await Promise.all(bracket.map(async (match, index) => {
+            const newMatch = new Match({
+                tournament: tournamentId,
+                round: match.round,
+                matchNumber: index + 1,
+                player1: match.player1,
+                player2: match.player2,
+                status: 'pending'
+            });
+            return await newMatch.save();
+        }));
+
+        // Update tournament with match references
+        await Tournament.findByIdAndUpdate(tournamentId, {
+            $push: { matches: { $each: matchDocs.map(m => m._id) } }
+        });
+
+        console.log(`✅ Bracket generated for tournament ${tournamentId}: ${matchDocs.length} matches created`);
+
+    } catch (error) {
+        console.error(`❌ Bracket generation failed for ${tournamentId}:`, error);
+    }
+}
+
+function generateSingleEliminationBracket(players) {
+    // Shuffle for random seeding
+    const shuffled = [...players].sort(() => Math.random() - 0.5);
+    
+    const bracket = [];
+    const numMatches = shuffled.length / 2;
+    
+    for (let i = 0; i < numMatches; i++) {
+        bracket.push({
+            round: 1,
+            player1: shuffled[i * 2],
+            player2: shuffled[i * 2 + 1]
+        });
+    }
+    
+    return bracket;
+}
 
 // GET /api/tournaments/:id/bracket
 router.get('/:id/bracket', auth, async (req, res) => {

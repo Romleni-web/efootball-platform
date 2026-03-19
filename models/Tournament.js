@@ -66,6 +66,11 @@ const tournamentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    // ADDED: Track when bracket was generated
+    bracketGeneratedAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true
