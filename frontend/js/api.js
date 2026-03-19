@@ -92,12 +92,26 @@ const API = {
     },
 
     async updateProfile(profileData) {
-        return this.authenticatedRequest('/users/profile', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profileData)
-        });
-    },
+    const response = await this.authenticatedRequest('/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+    });
+    
+    // Update stored user data immediately
+    if (response.user) {
+        const currentUser = Auth.getUser();
+        const updatedUser = { ...currentUser, ...response.user };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    } else if (response.success) {
+        // Fallback: merge sent data with current user
+        const currentUser = Auth.getUser();
+        const updatedUser = { ...currentUser, ...profileData };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+    
+    return response;
+},
 
     async searchPlayer(efootballId) {
         return this.authenticatedRequest(`/users/search/${efootballId}`);

@@ -640,41 +640,44 @@ const Pages = {
         }
     },
 
-    async profile() {
-        const mainContent = document.getElementById('mainContent');
-        const user = Auth.getUser();
+  async profile() {
+    const mainContent = document.getElementById('mainContent');
+    const user = Auth.getUser();
 
-        mainContent.innerHTML = `
-            <div class="form-container fade-in">
-                <h2>My Profile</h2>
-                <form id="profileForm">
-                    ${UI.createFormGroup('eFootball ID', 'text', 'efootballId', user.efootballId || '123456789')}
-                    ${UI.createFormGroup('Phone Number', 'tel', 'phoneNumber', user.phoneNumber || '2547XXXXXXXX')}
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Profile</button>
-                </form>
-            </div>
-        `;
+    mainContent.innerHTML = `
+        <div class="form-container fade-in">
+            <h2>My Profile</h2>
+            <form id="profileForm">
+                ${UI.createFormGroup('eFootball ID', 'text', 'efootballId', user.efootballId || '123456789')}
+                ${UI.createFormGroup('Phone Number', 'tel', 'phoneNumber', user.phoneNumber || '2547XXXXXXXX')}
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Profile</button>
+            </form>
+        </div>
+    `;
 
-       document.getElementById('profileForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const efootballId = formData.get('efootballId');
-    const phoneNumber = formData.get('phoneNumber');
-    
-    try {
-        UI.showLoading();
-        await API.updateProfile({ efootballId, phoneNumber });
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const efootballId = formData.get('efootballId');
+        const phoneNumber = formData.get('phoneNumber');
         
-        UI.showToast('Profile updated!', 'success');
-    } catch (error) {
-        UI.showToast(error.message, 'error');
-    } finally {
-        UI.hideLoading();
-    }
-});
-    }
+        try {
+            UI.showLoading();
+            await API.updateProfile({ efootballId, phoneNumber });
+            
+            UI.showToast('Profile updated!', 'success');
+            
+            // Re-render profile to show updated data
+            this.profile();
+            
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    });
+}
 };
-
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
     // Mobile menu toggle
