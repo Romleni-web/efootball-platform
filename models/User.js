@@ -21,17 +21,20 @@ const userSchema = new mongoose.Schema({
     },
     teamName: {
         type: String,
-        trim: true
+        trim: true,
+        default: ''
     },
     efootballId: {
         type: String,
         unique: true,
         sparse: true,
-        trim: true
+        trim: true,
+        default: null
     },
     phoneNumber: {
         type: String,
-        trim: true
+        trim: true,
+        default: ''
     },
     role: {
         type: String,

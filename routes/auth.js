@@ -37,7 +37,7 @@ router.post('/register', [
             username, 
             email, 
             password, 
-            teamName,
+            teamName: teamName || '',
             role: isAdmin ? 'admin' : 'player'
         });
 
