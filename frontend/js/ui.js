@@ -58,40 +58,42 @@ const UI = {
         });
     },
 
-  renderTournamentCard(tournament) {
-    const isRegistered = tournament.registeredPlayers?.some(
-        p => p.user?._id === Auth.getUser()?._id
-    );
-    const playerCount = tournament.registeredPlayers?.length || 0;
-    const maxPlayers = tournament.maxPlayers || 32;
-    const prizePool = maxPlayers * tournament.entryFee * 0.8;
+    renderTournamentCard(tournament) {
+        const isRegistered = tournament.registeredPlayers?.some(
+            p => p.user?._id === Auth.getUser()?._id
+        );
+        const playerCount = tournament.registeredPlayers?.length || 0;
+        const maxPlayers = tournament.maxPlayers || 32;
+        const prizePool = maxPlayers * tournament.entryFee * 0.8;
 
-    return `
-        <div class="tournament-card fade-in">
-            <div class="tournament-header">
-                <div>
-                    <h3 class="tournament-title">${tournament.name}</h3>
-                    <div class="prize-pool">🏆 ${this.formatCurrency(prizePool)}</div>
+        return `
+            <div class="tournament-card fade-in">
+                <div class="tournament-header">
+                    <div>
+                        <h3 class="tournament-title">${tournament.name}</h3>
+                        <div class="prize-pool">🏆 ${this.formatCurrency(prizePool)}</div>
+                    </div>
+                    <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
                 </div>
-                <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
+                <p style="color: var(--gray); margin-bottom: 1rem;">${tournament.description || 'No description'}</p>
+                <div class="tournament-meta">
+                    <span>💰 Entry: ${this.formatCurrency(tournament.entryFee)}</span>
+                    <span>👥 ${playerCount}/${maxPlayers}</span>
+                    <span>📅 ${this.formatDate(tournament.startDate)}</span>
+                </div>
+                ${tournament.whatsappLink ? `
+                    <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn" style="margin-bottom: 1rem; display: inline-block;">
+                        📱 Join WhatsApp Group
+                    </a>
+                ` : ''}
+                <div style="margin-top: 1rem;">
+                    ${this.getTournamentActionButton(tournament, isRegistered)}
+                </div>
+                ${this.renderAdminButtons(tournament)}
             </div>
-            <p style="color: var(--gray); margin-bottom: 1rem;">${tournament.description || 'No description'}</p>
-            <div class="tournament-meta">
-                <span>💰 Entry: ${this.formatCurrency(tournament.entryFee)}</span>
-                <span>👥 ${playerCount}/${maxPlayers}</span>
-                <span>📅 ${this.formatDate(tournament.startDate)}</span>
-            </div>
-            ${tournament.whatsappLink ? `
-                <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn" style="margin-bottom: 1rem; display: inline-block;">
-                    📱 Join WhatsApp Group
-                </a>
-            ` : ''}
-            <div style="margin-top: 1rem;">
-                ${this.getTournamentActionButton(tournament, isRegistered)}
-            </div>
-        </div>
-    `;
-},
+        `;
+    },
+
     getTournamentActionButton(tournament, isRegistered) {
         if (!Auth.isAuthenticated()) {
             return `<button class="btn btn-primary" onclick="Router.navigate('login')">Login to Join</button>`;
@@ -111,6 +113,59 @@ const UI = {
         }
 
         return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name}', ${tournament.entryFee}, '${tournament.adminPhone}')">Join Tournament</button>`;
+    },
+
+    // ADMIN BUTTONS - Start Tournament
+    renderAdminButtons(tournament) {
+        // Only show for admin
+        if (Auth.getUser()?.role !== 'admin') return '';
+        
+        // Show start button only for open tournaments
+        if (tournament.status === 'open') {
+            return `
+                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-warning" onclick="UI.startTournament('${tournament._id}')">
+                        ▶️ Start Tournament & Generate Bracket
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Show bracket view for ongoing tournaments
+        if (tournament.status === 'ongoing') {
+            return `
+                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name}')">
+                        👁️ View Bracket
+                    </button>
+                </div>
+            `;
+        }
+        
+        return '';
+    },
+
+    async startTournament(tournamentId) {
+        if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
+        
+        try {
+            UI.showLoading();
+            const response = await fetch(`${API.baseUrl}/admin/tournaments/${tournamentId}/start`, {
+                method: 'POST',
+                headers: API.getHeaders()
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) throw new Error(data.message);
+            
+            UI.showToast(`Tournament started! ${data.tournament.totalMatches} matches generated.`, 'success');
+            Router.navigate('dashboard');
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
     },
 
     showJoinModal(tournamentId, name, entryFee, adminPhone) {
@@ -204,5 +259,77 @@ const UI = {
     hideLoading() {
         const loader = document.getElementById('globalLoader');
         if (loader) loader.remove();
+    },
+
+    // BRACKET RENDERING FUNCTIONS
+    renderBracket(bracketData) {
+        if (!bracketData || bracketData.length === 0) {
+            return '<div class="no-bracket">No bracket available yet</div>';
+        }
+
+        let html = '<div class="bracket-container">';
+        
+        bracketData.forEach(round => {
+            html += `
+                <div class="bracket-round">
+                    <div class="round-title">Round ${round.round}</div>
+                    <div class="round-matches">
+            `;
+            
+            round.matches.forEach(match => {
+                const player1Name = match.player1?.username || 'TBD';
+                const player2Name = match.player2?.username || 'TBD';
+                const winner = match.winner;
+                
+                const p1Class = winner && winner._id === match.player1?._id ? 'winner' : '';
+                const p2Class = winner && winner._id === match.player2?._id ? 'winner' : '';
+                
+                html += `
+                    <div class="bracket-match">
+                        <div class="match-players">
+                            <div class="player ${p1Class}">${player1Name}</div>
+                            <div class="vs">VS</div>
+                            <div class="player ${p2Class}">${player2Name}</div>
+                        </div>
+                        ${match.status === 'completed' ? `
+                            <div class="match-result">
+                                ${match.score1 !== null ? match.score1 : '-'} - ${match.score2 !== null ? match.score2 : '-'}
+                            </div>
+                        ` : `<div class="match-status">${match.status}</div>`}
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        });
+        
+        html += '</div>';
+        return html;
+    },
+
+    showBracketModal(tournamentId, tournamentName) {
+        const content = `
+            <div class="modal-header">
+                <h3>🏆 ${tournamentName} - Bracket</h3>
+                <button class="close-btn" onclick="UI.closeModal()">×</button>
+            </div>
+            <div id="bracketContent" style="padding: 1rem; min-height: 200px;">
+                <div class="spinner"></div>
+            </div>
+        `;
+        
+        const modal = this.showModal(content);
+        
+        // Fetch bracket data
+        API.getBracket(tournamentId)
+            .then(bracket => {
+                document.getElementById('bracketContent').innerHTML = this.renderBracket(bracket);
+            })
+            .catch(error => {
+                document.getElementById('bracketContent').innerHTML = 
+                    `<div style="color: var(--danger);">Error loading bracket: ${error.message}</div>`;
+            });
+        
+        return modal;
     }
 };

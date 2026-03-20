@@ -905,3 +905,12 @@ body::before {
     display: block;
     animation: fadeIn 0.3s ease;
 }
+
+.btn-warning {
+    background: #f59e0b;
+    color: #000;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}

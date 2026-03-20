@@ -115,92 +115,11 @@ router.post('/:id/register', auth, async (req, res) => {
             }
         });
 
-        // SIDE EFFECT: Check if just became full and generate bracket
-        if (currentCount >= result.maxPlayers) {
-            // Use setImmediate to not block response
-            setImmediate(() => closeTournamentAndGenerateBracket(tournamentId));
-        }
-
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Registration failed' });
     }
 });
-
-// Helper function: Close tournament and generate bracket
-async function closeTournamentAndGenerateBracket(tournamentId) {
-    try {
-        // Atomically update status to prevent double-processing
-        const tournament = await Tournament.findOneAndUpdate(
-            {
-                _id: tournamentId,
-                status: 'open'  // Only if still open
-            },
-            {
-                status: 'ongoing',
-                bracketGeneratedAt: new Date()
-            },
-            { new: true }
-        );
-
-        if (!tournament) {
-            console.log(`Tournament ${tournamentId} already closed or bracket generated`);
-            return;
-        }
-
-        // Get all registered players
-        const players = tournament.registeredPlayers.map(rp => rp.user);
-
-        if (players.length !== tournament.maxPlayers) {
-            console.log(`Warning: Tournament ${tournamentId} has ${players.length}/${tournament.maxPlayers} players`);
-            return;
-        }
-
-        // Generate single elimination bracket
-        const bracket = generateSingleEliminationBracket(players);
-        
-        // Create matches in database
-        const matchDocs = await Promise.all(bracket.map(async (match, index) => {
-            const newMatch = new Match({
-                tournament: tournamentId,
-                round: match.round,
-                matchNumber: index + 1,
-                player1: match.player1,
-                player2: match.player2,
-                status: 'pending'
-            });
-            return await newMatch.save();
-        }));
-
-        // Update tournament with match references
-        await Tournament.findByIdAndUpdate(tournamentId, {
-            $push: { matches: { $each: matchDocs.map(m => m._id) } }
-        });
-
-        console.log(`✅ Bracket generated for tournament ${tournamentId}: ${matchDocs.length} matches created`);
-
-    } catch (error) {
-        console.error(`❌ Bracket generation failed for ${tournamentId}:`, error);
-    }
-}
-
-function generateSingleEliminationBracket(players) {
-    // Shuffle for random seeding
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    
-    const bracket = [];
-    const numMatches = shuffled.length / 2;
-    
-    for (let i = 0; i < numMatches; i++) {
-        bracket.push({
-            round: 1,
-            player1: shuffled[i * 2],
-            player2: shuffled[i * 2 + 1]
-        });
-    }
-    
-    return bracket;
-}
 
 // GET /api/tournaments/:id/bracket
 router.get('/:id/bracket', auth, async (req, res) => {
