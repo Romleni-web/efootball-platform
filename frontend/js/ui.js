@@ -146,27 +146,31 @@ const UI = {
     },
 
     async startTournament(tournamentId) {
-        if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
+    if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
+    
+    try {
+        UI.showLoading();
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/admin/tournaments/${tournamentId}/start`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
         
-        try {
-            UI.showLoading();
-            const response = await fetch(`${API.baseUrl}/admin/tournaments/${tournamentId}/start`, {
-                method: 'POST',
-                headers: API.getHeaders()
-            });
-            
-            const data = await response.json();
-            
-            if (!response.ok) throw new Error(data.message);
-            
-            UI.showToast(`Tournament started! ${data.tournament.totalMatches} matches generated.`, 'success');
-            Router.navigate('dashboard');
-        } catch (error) {
-            UI.showToast(error.message, 'error');
-        } finally {
-            UI.hideLoading();
-        }
-    },
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.message);
+        
+        UI.showToast(`Tournament started! ${data.tournament.totalMatches} matches generated.`, 'success');
+        Router.navigate('dashboard');
+    } catch (error) {
+        UI.showToast(error.message, 'error');
+    } finally {
+        UI.hideLoading();
+    }
+},
 
     showJoinModal(tournamentId, name, entryFee, adminPhone) {
         const content = `

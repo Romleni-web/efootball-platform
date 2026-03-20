@@ -1,12 +1,7 @@
-// Auto-detect API URL
-const API_BASE_URL = (() => {
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://localhost:5000/api';
-    }
-    // Production - use same domain
-    return `${window.location.protocol}//${hostname}/api`;
-})();
+// Auto-detect API URL - FIXED
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000/api'
+    : 'https://efootball-platform.onrender.com/api';
 
 console.log('API URL:', API_BASE_URL); // Debug log
 
