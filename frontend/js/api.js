@@ -59,6 +59,15 @@ const API = {
         return this.authenticatedRequest(`/tournaments/${id}/bracket`);
     },
 
+    // FIXED: Direct tournament registration (no payment needed for now)
+    async registerForTournament(tournamentId) {
+        return this.authenticatedRequest(`/tournaments/${tournamentId}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+
+    // Keep old payment-based join for backward compatibility
     async joinTournament(tournamentId, paymentData) {
         const formData = new FormData();
         formData.append('tournamentId', tournamentId);
@@ -92,26 +101,26 @@ const API = {
     },
 
     async updateProfile(profileData) {
-    const response = await this.authenticatedRequest('/users/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-    });
-    
-    // Update stored user data immediately
-    if (response.user) {
-        const currentUser = Auth.getUser();
-        const updatedUser = { ...currentUser, ...response.user };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-    } else if (response.success) {
-        // Fallback: merge sent data with current user
-        const currentUser = Auth.getUser();
-        const updatedUser = { ...currentUser, ...profileData };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-    }
-    
-    return response;
-},
+        const response = await this.authenticatedRequest('/users/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profileData)
+        });
+        
+        // Update stored user data immediately
+        if (response.user) {
+            const currentUser = Auth.getUser();
+            const updatedUser = { ...currentUser, ...response.user };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+        } else if (response.success) {
+            // Fallback: merge sent data with current user
+            const currentUser = Auth.getUser();
+            const updatedUser = { ...currentUser, ...profileData };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        
+        return response;
+    },
 
     async searchPlayer(efootballId) {
         return this.authenticatedRequest(`/users/search/${efootballId}`);
@@ -178,6 +187,18 @@ const API = {
     },
 
     // Helper methods
+    // ADDED: getHeaders method
+    getHeaders() {
+        const token = Auth.getToken();
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    },
+
     async authenticatedRequest(endpoint, options = {}, includeJson = true) {
         const token = Auth.getToken();
         if (!token) {
