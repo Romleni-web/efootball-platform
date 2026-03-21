@@ -132,33 +132,64 @@ const API = {
         return this.handleResponse(response);
     },
 
-    // Matches
-    // UPDATED: Support both formats for UI compatibility
-    async submitMatchResult(matchId, resultData) {
-        // Handle object with matchId property (from UI)
-        if (typeof matchId === 'object' && matchId.matchId) {
-            resultData = matchId;
-            matchId = resultData.matchId;
-        }
+    // ============================================
+    // MATCH RESULT SUBMISSION - DUAL SYSTEM
+    // ============================================
 
+    // Get match status and submissions
+    async getMatchStatus(matchId) {
+        return this.authenticatedRequest(`/matches/${matchId}/status`);
+    },
+
+    // Submit match result - FIXED for dual submission
+    async submitMatchResult(matchId, resultData) {
         const formData = new FormData();
         formData.append('score1', resultData.score1);
         formData.append('score2', resultData.score2);
         formData.append('winner', resultData.winner); // 'player1' or 'player2'
+        
         if (resultData.notes) {
             formData.append('notes', resultData.notes);
         }
-        if (resultData.screenshot) {
+        if (resultData.screenshot && resultData.screenshot.size > 0) {
             formData.append('screenshot', resultData.screenshot);
         }
 
-        return this.authenticatedRequest(`/matches/${matchId}/result`, {
+        // IMPORTANT: Don't set Content-Type, let browser set it with boundary
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/matches/${matchId}/result`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
             body: formData
-        }, false);
+        });
+
+        return this.handleResponse(response);
     },
 
-    // Admin
+    // ============================================
+    // ADMIN - MATCH VERIFICATION
+    // ============================================
+
+    // Get pending/disputed match results for admin
+    async getPendingResults() {
+        return this.authenticatedRequest('/admin/results/pending');
+    },
+
+    // Admin resolve disputed match
+    async resolveMatch(matchId, decision, data = {}) {
+        return this.authenticatedRequest(`/admin/matches/${matchId}/resolve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision, ...data })
+        });
+    },
+
+    // ============================================
+    // ADMIN - PAYMENTS & TOURNAMENTS
+    // ============================================
+
     async getPendingPayments() {
         return this.authenticatedRequest('/payments/pending');
     },
@@ -198,7 +229,6 @@ const API = {
     },
 
     // Helper methods
-    // ADDED: getHeaders method
     getHeaders() {
         const token = Auth.getToken();
         const headers = {

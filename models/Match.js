@@ -53,7 +53,7 @@ const matchSchema = new mongoose.Schema({
         player1: {
             score1: Number,
             score2: Number,
-            winner: String, // 'player1' or 'player2'
+            winner: String,
             notes: String,
             submittedAt: Date,
             screenshotPath: String

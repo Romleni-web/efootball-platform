@@ -16,7 +16,6 @@ const Router = {
     navigate(page, params = null) {
         this.currentPage = page;
         
-        // Update active nav link
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.classList.remove('active');
             if (link.dataset.page === page) {
@@ -24,17 +23,14 @@ const Router = {
             }
         });
 
-        // Close mobile menu
         document.getElementById('navLinks').classList.remove('active');
 
-        // Render page
         const mainContent = document.getElementById('mainContent');
         
         if (page.startsWith('tournament/')) {
             const id = page.split('/')[1];
             this.routes.tournament(id);
         } else if (this.routes[page]) {
-            // Check auth for protected routes
             if (['dashboard', 'profile'].includes(page) && !Auth.isAuthenticated()) {
                 this.navigate('login');
                 return;
@@ -391,7 +387,7 @@ const Pages = {
                                         <h4>vs ${m.opponent.username}</h4>
                                         <p style="color: var(--gray);">${m.tournament.name}</p>
                                     </div>
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}')">Submit Result</button>
+                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
                                 </div>
                                 <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
                                     <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
@@ -405,59 +401,10 @@ const Pages = {
                     </div>
                 </div>
             `;
-        } catch (error) {  console.error('❌ Dashboard error details:', error);
+        } catch (error) {  
+            console.error('❌ Dashboard error details:', error);
             mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard</p></div>`;
         }
-    },
-
-    showSubmitResultModal(matchId) {
-        const content = `
-            <div class="modal-header">
-                <h3>Submit Match Result</h3>
-                <button class="close-btn" onclick="UI.closeModal()">×</button>
-            </div>
-            <form id="resultForm" enctype="multipart/form-data">
-                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>Your Score</label>
-                        <input type="number" name="score1" min="0" required style="text-align: center; font-size: 1.5rem;">
-                    </div>
-                    <span style="font-size: 1.5rem; font-weight: bold;">-</span>
-                    <div class="form-group" style="margin: 0;">
-                        <label>Opponent Score</label>
-                        <input type="number" name="score2" min="0" required style="text-align: center; font-size: 1.5rem;">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Upload Match Screenshot</label>
-                    <input type="file" name="screenshot" accept="image/*" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Result</button>
-            </form>
-        `;
-
-        const modal = UI.showModal(content);
-
-        document.getElementById('resultForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            try {
-                UI.showLoading();
-                await API.submitMatchResult(matchId, {
-                    score1: formData.get('score1'),
-                    score2: formData.get('score2'),
-                    screenshot: formData.get('screenshot')
-                });
-                UI.closeModal();
-                UI.showToast('Result submitted for verification!', 'success');
-                Router.navigate('dashboard');
-            } catch (error) {
-                UI.showToast(error.message, 'error');
-            } finally {
-                UI.hideLoading();
-            }
-        });
     },
 
     async leaderboard() {
@@ -509,9 +456,10 @@ const Pages = {
         const mainContent = document.getElementById('mainContent');
         
         try {
-            const [stats, pendingPayments] = await Promise.all([
+            const [stats, pendingPayments, pendingResults] = await Promise.all([
                 API.getAdminStats(),
-                API.getPendingPayments()
+                API.getPendingPayments(),
+                API.getPendingResults()
             ]);
 
             mainContent.innerHTML = `
@@ -539,8 +487,8 @@ const Pages = {
                                 <div class="stat-label">Tournaments</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value">${stats.pendingPayments || 0}</div>
-                                <div class="stat-label">Pending Payments</div>
+                                <div class="stat-value">${(pendingPayments?.length || 0) + (pendingResults?.length || 0)}</div>
+                                <div class="stat-label">Pending Verifications</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-value">${UI.formatCurrency(stats.totalRevenue || 0)}</div>
@@ -548,18 +496,20 @@ const Pages = {
                             </div>
                         </div>
 
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Pending Verifications</h3>
-                        ${pendingPayments.length ? `
+                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">
+                            💰 Payment Verifications (${pendingPayments?.length || 0})
+                        </h3>
+                        ${pendingPayments?.length ? `
                             <div class="pending-payments">
                                 ${pendingPayments.map(p => `
-                                    <div class="payment-item">
+                                    <div class="payment-item" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                                         <div style="display: flex; gap: 1rem; align-items: center;">
-                                            <img src="${p.screenshotPath}" alt="Proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')">
+                                            <img src="${p.screenshotPath}" alt="Proof" class="payment-proof-img" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; cursor: pointer;" onclick="window.open('${p.screenshotPath}', '_blank')">
                                             <div>
-                                                <strong>${p.user.username}</strong>
-                                                <p style="color: var(--gray); font-size: 0.9rem;">
-                                                    ${p.tournament.name}<br>
-                                                    ${UI.formatCurrency(p.amount)} | ${p.mpesaNumber} | ${p.transactionCode}
+                                                <strong>${p.user?.username || 'Unknown'}</strong>
+                                                <p style="color: var(--gray); font-size: 0.9rem; margin: 0;">
+                                                    ${p.tournament?.name || 'Unknown Tournament'}<br>
+                                                    ${UI.formatCurrency(p.amount)} | ${p.mpesaNumber}
                                                 </p>
                                             </div>
                                         </div>
@@ -571,12 +521,166 @@ const Pages = {
                                 `).join('')}
                             </div>
                         ` : '<p style="color: var(--gray);">No pending payments.</p>'}
+
+                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">
+                            ⚽ Match Verifications (${pendingResults?.length || 0})
+                        </h3>
+                        ${pendingResults?.length ? `
+                            <div class="pending-results">
+                                ${pendingResults.map(r => `
+                                    <div class="result-item" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 4px solid ${r.status === 'disputed' ? 'var(--danger)' : 'var(--warning)'};">
+                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                            <div>
+                                                <strong>${r.tournament?.name || 'Unknown Tournament'}</strong>
+                                                <p style="color: var(--gray); font-size: 0.9rem; margin: 0.25rem 0;">
+                                                    Round ${r.round || '-'} | ${r.status === 'disputed' ? '🔥 DISPUTED' : '⏳ Waiting for opponent'}
+                                                </p>
+                                            </div>
+                                            <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${r.status === 'disputed' ? 'var(--danger)' : 'var(--warning)'};">
+                                                ${r.status === 'disputed' ? 'Disputed' : 'Pending'}
+                                            </span>
+                                        </div>
+                                        
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player1.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                                    <strong>${r.player1.user?.username || 'Player 1'}</strong>
+                                                    ${r.player1.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                </div>
+                                                ${r.player1.submitted ? `
+                                                    <div style="font-family: Orbitron; font-size: 1.1rem;">
+                                                        ${r.player1.submission.score1} - ${r.player1.submission.score2}
+                                                    </div>
+                                                    <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
+                                                        Winner: ${r.player1.submission.winner === 'player1' ? r.player1.user?.username : r.player2.user?.username}
+                                                    </div>
+                                                ` : '<span style="color: var(--gray);">Not submitted</span>'}
+                                            </div>
+
+                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player2.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                                    <strong>${r.player2.user?.username || 'Player 2'}</strong>
+                                                    ${r.player2.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                </div>
+                                                ${r.player2.submitted ? `
+                                                    <div style="font-family: Orbitron; font-size: 1.1rem;">
+                                                        ${r.player2.submission.score1} - ${r.player2.submission.score2}
+                                                    </div>
+                                                    <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
+                                                        Winner: ${r.player2.submission.winner === 'player1' ? r.player1.user?.username : r.player2.user?.username}
+                                                    </div>
+                                                ` : '<span style="color: var(--gray);">Not submitted</span>'}
+                                            </div>
+                                        </div>
+
+                                        ${r.status === 'disputed' ? `
+                                            <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,0,0,0.1); border-radius: 8px;">
+                                                <p style="color: var(--danger); margin-bottom: 0.75rem; font-weight: bold;">⚠️ Results do not match!</p>
+                                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                                    <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
+                                                        ✓ ${r.player1.user?.username} Correct
+                                                    </button>
+                                                    <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
+                                                        ✓ ${r.player2.user?.username} Correct
+                                                    </button>
+                                                    <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1.user?.username}', '${r.player2.user?.username}')">
+                                                        ⚖️ Custom
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">
+                                                ${r.disputeReason}
+                                            </p>
+                                        `}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p style="color: var(--gray);">No matches need verification.</p>'}
                     </div>
                 </div>
             `;
         } catch (error) {
             mainContent.innerHTML = `<div class="empty-state"><p>Error loading admin panel</p></div>`;
         }
+    },
+
+    async resolveMatch(matchId, decision) {
+        try {
+            UI.showLoading();
+            await API.resolveMatch(matchId, decision);
+            UI.showToast('Match resolved successfully', 'success');
+            Router.navigate('admin');
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    showCustomResolveModal(matchId, player1Name, player2Name) {
+        const p1 = player1Name || 'Player 1';
+        const p2 = player2Name || 'Player 2';
+        
+        const content = `
+            <div class="modal-header">
+                <h3>Custom Match Resolution</h3>
+                <button class="close-btn" onclick="UI.closeModal()">×</button>
+            </div>
+            <form id="resolveForm" style="padding: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>${p1} Score</label>
+                        <input type="number" name="score1" min="0" required style="text-align: center; font-size: 1.2rem;">
+                    </div>
+                    <span style="font-size: 1.5rem;">-</span>
+                    <div class="form-group" style="margin: 0;">
+                        <label>${p2} Score</label>
+                        <input type="number" name="score2" min="0" required style="text-align: center; font-size: 1.2rem;">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Winner</label>
+                    <select name="winner" required style="width: 100%;">
+                        <option value="">Select Winner</option>
+                        <option value="player1">${p1}</option>
+                        <option value="player2">${p2}</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Reason/Notes</label>
+                    <textarea name="reason" rows="2" placeholder="Why are you overriding the submitted results?"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Resolve Match</button>
+            </form>
+        `;
+
+        const modal = UI.showModal(content);
+
+        document.getElementById('resolveForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                UI.showLoading();
+                await API.resolveMatch(matchId, 'custom', {
+                    score1: formData.get('score1'),
+                    score2: formData.get('score2'),
+                    winner: formData.get('winner'),
+                    reason: formData.get('reason')
+                });
+                UI.closeModal();
+                UI.showToast('Match resolved with custom result', 'success');
+                Router.navigate('admin');
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
     },
 
     showCreateTournamentModal() {
@@ -640,54 +744,48 @@ const Pages = {
         }
     },
 
-  async profile() {
-    const mainContent = document.getElementById('mainContent');
-    const user = Auth.getUser();
+    async profile() {
+        const mainContent = document.getElementById('mainContent');
+        const user = Auth.getUser();
 
-    mainContent.innerHTML = `
-        <div class="form-container fade-in">
-            <h2>My Profile</h2>
-            <form id="profileForm">
-                ${UI.createFormGroup('eFootball ID', 'text', 'efootballId', user.efootballId || '123456789')}
-                ${UI.createFormGroup('Phone Number', 'tel', 'phoneNumber', user.phoneNumber || '2547XXXXXXXX')}
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Profile</button>
-            </form>
-        </div>
-    `;
+        mainContent.innerHTML = `
+            <div class="form-container fade-in">
+                <h2>My Profile</h2>
+                <form id="profileForm">
+                    ${UI.createFormGroup('eFootball ID', 'text', 'efootballId', user.efootballId || '123456789')}
+                    ${UI.createFormGroup('Phone Number', 'tel', 'phoneNumber', user.phoneNumber || '2547XXXXXXXX')}
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Profile</button>
+                </form>
+            </div>
+        `;
 
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const efootballId = formData.get('efootballId');
-        const phoneNumber = formData.get('phoneNumber');
-        
-        try {
-            UI.showLoading();
-            await API.updateProfile({ efootballId, phoneNumber });
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const efootballId = formData.get('efootballId');
+            const phoneNumber = formData.get('phoneNumber');
             
-            UI.showToast('Profile updated!', 'success');
-            
-            // Re-render profile to show updated data
-            this.profile();
-            
-        } catch (error) {
-            UI.showToast(error.message, 'error');
-        } finally {
-            UI.hideLoading();
-        }
-    });
-}
+            try {
+                UI.showLoading();
+                await API.updateProfile({ efootballId, phoneNumber });
+                
+                UI.showToast('Profile updated!', 'success');
+                this.profile();
+                
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+    }
 };
-// Initialize App
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // Mobile menu toggle
     document.getElementById('mobileMenuBtn').addEventListener('click', () => {
         document.getElementById('navLinks').classList.toggle('active');
     });
 
-    // Initialize auth
     await Auth.init();
-
-    // Initial route
     Router.navigate('home');
 });
