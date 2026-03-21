@@ -405,7 +405,7 @@ const Pages = {
                     </div>
                 </div>
             `;
-        } catch (error) {
+        } catch (error) {  console.error('❌ Dashboard error details:', error);
             mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard</p></div>`;
         }
     },
