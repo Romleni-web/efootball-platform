@@ -54,6 +54,11 @@ const API = {
         return this.authenticatedRequest(`/tournaments/${id}/bracket`);
     },
 
+    // Alias for UI compatibility
+    async getBracket(tournamentId) {
+        return this.getTournamentBracket(tournamentId);
+    },
+
     // FIXED: Direct tournament registration (no payment needed for now)
     async registerForTournament(tournamentId) {
         return this.authenticatedRequest(`/tournaments/${tournamentId}/register`, {
@@ -128,10 +133,21 @@ const API = {
     },
 
     // Matches
+    // UPDATED: Support both formats for UI compatibility
     async submitMatchResult(matchId, resultData) {
+        // Handle object with matchId property (from UI)
+        if (typeof matchId === 'object' && matchId.matchId) {
+            resultData = matchId;
+            matchId = resultData.matchId;
+        }
+
         const formData = new FormData();
         formData.append('score1', resultData.score1);
         formData.append('score2', resultData.score2);
+        formData.append('winner', resultData.winner); // 'player1' or 'player2'
+        if (resultData.notes) {
+            formData.append('notes', resultData.notes);
+        }
         if (resultData.screenshot) {
             formData.append('screenshot', resultData.screenshot);
         }

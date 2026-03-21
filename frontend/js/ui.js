@@ -362,5 +362,117 @@ const UI = {
             });
         
         return modal;
+    },
+
+    // NEW FUNCTION: Submit Match Result Modal
+    showSubmitResultModal(matchId, round, player1Name, player2Name) {
+        const content = `
+            <div class="modal-header">
+                <h3>Submit Match Result - Round ${round}</h3>
+                <button class="close-btn" onclick="UI.closeModal()">×</button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-weight: 600; color: var(--accent);">${player1Name}</div>
+                    </div>
+                    <div style="padding: 0 1rem; color: var(--gray);">VS</div>
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-weight: 600; color: var(--accent);">${player2Name}</div>
+                    </div>
+                </div>
+                
+                <form id="resultForm">
+                    <input type="hidden" name="matchId" value="${matchId}">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>${player1Name} Score</label>
+                            <input type="number" name="score1" min="0" max="10" required value="0" style="text-align: center; font-size: 1.2rem;">
+                        </div>
+                        <div class="form-group">
+                            <label>${player2Name} Score</label>
+                            <input type="number" name="score2" min="0" max="10" required value="0" style="text-align: center; font-size: 1.2rem;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Winner</label>
+                        <select name="winnerId" required style="width: 100%;">
+                            <option value="">Select Winner</option>
+                            <option value="player1">${player1Name}</option>
+                            <option value="player2">${player2Name}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label>Notes (Optional)</label>
+                        <textarea name="notes" rows="2" placeholder="Any additional info..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Submit Result
+                    </button>
+                </form>
+            </div>
+        `;
+
+        const modal = this.showModal(content);
+
+        // Auto-select winner based on score
+        const score1Input = document.querySelector('input[name="score1"]');
+        const score2Input = document.querySelector('input[name="score2"]');
+        const winnerSelect = document.querySelector('select[name="winnerId"]');
+        
+        const updateWinner = () => {
+            const s1 = parseInt(score1Input.value) || 0;
+            const s2 = parseInt(score2Input.value) || 0;
+            
+            if (s1 > s2) winnerSelect.value = 'player1';
+            else if (s2 > s1) winnerSelect.value = 'player2';
+            else winnerSelect.value = '';
+        };
+        
+        score1Input.addEventListener('input', updateWinner);
+        score2Input.addEventListener('input', updateWinner);
+
+        document.getElementById('resultForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            const result = {
+                matchId: formData.get('matchId'),
+                score1: parseInt(formData.get('score1')),
+                score2: parseInt(formData.get('score2')),
+                winner: formData.get('winnerId'),
+                notes: formData.get('notes')
+            };
+
+            // Validate
+            if (result.score1 === result.score2) {
+                UI.showToast('Scores cannot be tied', 'error');
+                return;
+            }
+            
+            const expectedWinner = result.score1 > result.score2 ? 'player1' : 'player2';
+            if (result.winner !== expectedWinner) {
+                UI.showToast('Winner selection does not match scores', 'error');
+                return;
+            }
+
+            try {
+                UI.showLoading();
+                await API.submitMatchResult(result);
+                UI.closeModal();
+                UI.showToast('Result submitted successfully!', 'success');
+                Router.navigate('dashboard');
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+
+        return modal;
     }
 };
