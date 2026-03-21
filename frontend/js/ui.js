@@ -46,36 +46,44 @@ const UI = {
         `;
     },
 
-  formatCurrency(amount) {
-    if (amount === undefined || amount === null) return 'KES 0';
-    return `KES ${amount.toLocaleString()}`;
-},
+    formatCurrency(amount) {
+        if (amount === undefined || amount === null) return 'KES 0';
+        return `KES ${amount.toLocaleString()}`;
+    },
 
-  formatDate(dateString) {
-    if (!dateString) return 'TBD';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-},
+    formatDate(dateString) {
+        if (!dateString) return 'TBD';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    },
 
     renderTournamentCard(tournament) {
+        // Guard clause for null tournament
+        if (!tournament || typeof tournament !== 'object') {
+            console.error('renderTournamentCard received null/invalid tournament', tournament);
+            return `<div class="tournament-card error">Error loading tournament</div>`;
+        }
+
+        const currentUser = Auth.getUser();
         const isRegistered = tournament.registeredPlayers?.some(
-            p => p.user?._id === Auth.getUser()?._id
-        );
+            p => p?.user?._id === currentUser?._id
+        ) || false;
+        
         const playerCount = tournament.registeredPlayers?.length || 0;
         const maxPlayers = tournament.maxPlayers || 32;
-        const prizePool = maxPlayers * tournament.entryFee * 0.8;
+        const prizePool = maxPlayers * (tournament.entryFee || 0) * 0.8;
 
         return `
             <div class="tournament-card fade-in">
                 <div class="tournament-header">
                     <div>
-                        <h3 class="tournament-title">${tournament.name}</h3>
+                        <h3 class="tournament-title">${tournament.name || 'Unnamed Tournament'}</h3>
                         <div class="prize-pool">🏆 ${this.formatCurrency(prizePool)}</div>
                     </div>
-                    <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
+                    <span class="tournament-status status-${tournament.status || 'unknown'}">${tournament.status || 'unknown'}</span>
                 </div>
                 <p style="color: var(--gray); margin-bottom: 1rem;">${tournament.description || 'No description'}</p>
                 <div class="tournament-meta">
@@ -101,8 +109,22 @@ const UI = {
             return `<button class="btn btn-primary" onclick="Router.navigate('login')">Login to Join</button>`;
         }
 
+        // Guard clause for null tournament
+        if (!tournament) {
+            console.error('getTournamentActionButton received null tournament');
+            return `<button class="btn btn-secondary" disabled>Error</button>`;
+        }
+
         if (isRegistered) {
-            const player = tournament.registeredPlayers.find(p => p.user._id === Auth.getUser()._id);
+            const userId = Auth.getUser()?._id;
+            const player = tournament.registeredPlayers?.find(p => p?.user?._id === userId);
+            
+            // Guard against undefined player (data mismatch)
+            if (!player) {
+                console.warn('Player marked as registered but not found in array', { tournamentId: tournament._id, userId });
+                return `<span style="color: var(--warning);">⏳ Verification Pending</span>`;
+            }
+            
             if (player.paid) {
                 return `<button class="btn btn-success" onclick="Router.navigate('tournament/${tournament._id}')">View Details</button>`;
             } else {
@@ -114,13 +136,16 @@ const UI = {
             return `<button class="btn btn-secondary" disabled>Registration Closed</button>`;
         }
 
-        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name}', ${tournament.entryFee}, '${tournament.adminPhone}')">Join Tournament</button>`;
+        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}', ${tournament.entryFee || 0}, '${tournament.adminPhone || ''}')">Join Tournament</button>`;
     },
 
     // ADMIN BUTTONS - Start Tournament
     renderAdminButtons(tournament) {
         // Only show for admin
         if (Auth.getUser()?.role !== 'admin') return '';
+        
+        // Guard clause for null tournament
+        if (!tournament) return '';
         
         // Show start button only for open tournaments
         if (tournament.status === 'open') {
@@ -137,7 +162,7 @@ const UI = {
         if (tournament.status === 'ongoing') {
             return `
                 <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name}')">
+                    <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}')">
                         👁️ View Bracket
                     </button>
                 </div>
@@ -148,31 +173,31 @@ const UI = {
     },
 
     async startTournament(tournamentId) {
-    if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
-    
-    try {
-        UI.showLoading();
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/admin/tournaments/${tournamentId}/start`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
         
-        const data = await response.json();
-        
-        if (!response.ok) throw new Error(data.message);
-        
-        UI.showToast(`Tournament started! ${data.tournament.totalMatches} matches generated.`, 'success');
-        Router.navigate('dashboard');
-    } catch (error) {
-        UI.showToast(error.message, 'error');
-    } finally {
-        UI.hideLoading();
-    }
-},
+        try {
+            UI.showLoading();
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/admin/tournaments/${tournamentId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) throw new Error(data.message);
+            
+            UI.showToast(`Tournament started! ${data.tournament?.totalMatches || 0} matches generated.`, 'success');
+            Router.navigate('dashboard');
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
 
     showJoinModal(tournamentId, name, entryFee, adminPhone) {
         const content = `
@@ -278,17 +303,17 @@ const UI = {
         bracketData.forEach(round => {
             html += `
                 <div class="bracket-round">
-                    <div class="round-title">Round ${round.round}</div>
+                    <div class="round-title">Round ${round.round || '?'}</div>
                     <div class="round-matches">
             `;
             
-            round.matches.forEach(match => {
-                const player1Name = match.player1?.username || 'TBD';
-                const player2Name = match.player2?.username || 'TBD';
-                const winner = match.winner;
+            round.matches?.forEach(match => {
+                const player1Name = match?.player1?.username || 'TBD';
+                const player2Name = match?.player2?.username || 'TBD';
+                const winner = match?.winner;
                 
-                const p1Class = winner && winner._id === match.player1?._id ? 'winner' : '';
-                const p2Class = winner && winner._id === match.player2?._id ? 'winner' : '';
+                const p1Class = winner && winner._id === match?.player1?._id ? 'winner' : '';
+                const p2Class = winner && winner._id === match?.player2?._id ? 'winner' : '';
                 
                 html += `
                     <div class="bracket-match">
@@ -297,11 +322,11 @@ const UI = {
                             <div class="vs">VS</div>
                             <div class="player ${p2Class}">${player2Name}</div>
                         </div>
-                        ${match.status === 'completed' ? `
+                        ${match?.status === 'completed' ? `
                             <div class="match-result">
                                 ${match.score1 !== null ? match.score1 : '-'} - ${match.score2 !== null ? match.score2 : '-'}
                             </div>
-                        ` : `<div class="match-status">${match.status}</div>`}
+                        ` : `<div class="match-status">${match?.status || 'pending'}</div>`}
                     </div>
                 `;
             });
