@@ -331,81 +331,89 @@ const Pages = {
     },
 
     async dashboard() {
-        const mainContent = document.getElementById('mainContent');
-        
-        try {
-            const [stats, tournaments, upcoming] = await Promise.all([
-                API.getUserStats(),
-                API.getUserTournaments(),
-                API.getUpcomingMatches()
-            ]);
+    const mainContent = document.getElementById('mainContent');
+    
+    try {
+        const [stats, tournaments, upcoming] = await Promise.all([
+            API.getUserStats(),
+            API.getUserTournaments(),
+            API.getUpcomingMatches()
+        ]);
 
-            mainContent.innerHTML = `
-                <div class="dashboard">
-                    <aside class="sidebar">
-                        <ul class="sidebar-menu">
-                            <li><a href="#" class="active" onclick="Router.navigate('dashboard')">Overview</a></li>
-                            <li><a href="#" onclick="Router.navigate('profile')">My Profile</a></li>
-                            <li><a href="#" onclick="Router.navigate('tournaments')">Browse Tournaments</a></li>
-                        </ul>
-                    </aside>
+        // Safely handle upcoming matches with null checks
+        const safeUpcoming = (upcoming || []).map(m => ({
+            ...m,
+            opponent: m.opponent || { username: 'Unknown', efootballId: 'N/A' },
+            player: m.player || { username: 'You' },
+            tournament: m.tournament || { name: 'Unknown Tournament' }
+        }));
 
-                    <div class="dashboard-content">
-                        <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">Dashboard</h2>
-                        
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.points || 0}</div>
-                                <div class="stat-label">Points</div>
+        mainContent.innerHTML = `
+            <div class="dashboard">
+                <aside class="sidebar">
+                    <ul class="sidebar-menu">
+                        <li><a href="#" class="active" onclick="Router.navigate('dashboard')">Overview</a></li>
+                        <li><a href="#" onclick="Router.navigate('profile')">My Profile</a></li>
+                        <li><a href="#" onclick="Router.navigate('tournaments')">Browse Tournaments</a></li>
+                    </ul>
+                </aside>
+
+                <div class="dashboard-content">
+                    <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">Dashboard</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats?.points || 0}</div>
+                            <div class="stat-label">Points</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats?.wins || 0}</div>
+                            <div class="stat-label">Wins</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats?.losses || 0}</div>
+                            <div class="stat-label">Losses</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${((stats?.wins || 0) + (stats?.losses || 0)) > 0 ? Math.round((stats.wins / (stats.wins + stats.losses)) * 100) : 0}%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                    </div>
+
+                    <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">My Tournaments</h3>
+                    ${tournaments?.length ? `
+                        <div class="card-grid">
+                            ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
+                        </div>
+                    ` : '<p style="color: var(--gray);">You haven\'t joined any tournaments yet.</p>'}
+
+                    <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Upcoming Matches</h3>
+                    ${safeUpcoming.length ? safeUpcoming.map(m => `
+                        <div class="tournament-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
+                                    <p style="color: var(--gray);">${m.tournament?.name || 'Unknown Tournament'}</p>
+                                </div>
+                                <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
                             </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.wins || 0}</div>
-                                <div class="stat-label">Wins</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.losses || 0}</div>
-                                <div class="stat-label">Losses</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${((stats.wins || 0) + (stats.losses || 0)) > 0 ? Math.round((stats.wins / (stats.wins + stats.losses)) * 100) : 0}%</div>
-                                <div class="stat-label">Win Rate</div>
+                            <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
+                                <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <code style="background: var(--glass); padding: 0.5rem 1rem; border-radius: 5px; font-family: Orbitron;">${m.opponent?.efootballId || 'N/A'}</code>
+                                    <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent?.efootballId || ''}')">Copy</button>
+                                </div>
                             </div>
                         </div>
-
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">My Tournaments</h3>
-                        ${tournaments.length ? `
-                            <div class="card-grid">
-                                ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
-                            </div>
-                        ` : '<p style="color: var(--gray);">You haven\'t joined any tournaments yet.</p>'}
-
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Upcoming Matches</h3>
-                        ${upcoming.length ? upcoming.map(m => `
-                            <div class="tournament-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h4>vs ${m.opponent.username}</h4>
-                                        <p style="color: var(--gray);">${m.tournament.name}</p>
-                                    </div>
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
-                                </div>
-                                <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
-                                    <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
-                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                        <code style="background: var(--glass); padding: 0.5rem 1rem; border-radius: 5px; font-family: Orbitron;">${m.opponent.efootballId}</code>
-                                        <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent.efootballId}')">Copy</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('') : '<p style="color: var(--gray);">No upcoming matches.</p>'}
-                    </div>
+                    `).join('') : '<p style="color: var(--gray);">No upcoming matches.</p>'}
                 </div>
-            `;
-        } catch (error) {  
-            console.error('❌ Dashboard error details:', error);
-            mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard</p></div>`;
-        }
-    },
+            </div>
+        `;
+    } catch (error) {  
+        console.error('❌ Dashboard error details:', error);
+        mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard: ${error.message}</p></div>`;
+    }
+},
 
     async leaderboard() {
         const mainContent = document.getElementById('mainContent');
