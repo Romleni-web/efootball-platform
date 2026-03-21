@@ -46,17 +46,19 @@ const UI = {
         `;
     },
 
-    formatCurrency(amount) {
-        return `KES ${amount.toLocaleString()}`;
-    },
+  formatCurrency(amount) {
+    if (amount === undefined || amount === null) return 'KES 0';
+    return `KES ${amount.toLocaleString()}`;
+},
 
-    formatDate(dateString) {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    },
+  formatDate(dateString) {
+    if (!dateString) return 'TBD';
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+},
 
     renderTournamentCard(tournament) {
         const isRegistered = tournament.registeredPlayers?.some(
