@@ -335,7 +335,7 @@ router.post('/tournaments/:id/start', auth, adminOnly, async (req, res) => {
             matchNumber: m.matchNumber,
             player1: m.player1,
             player2: m.player2,
-            status: scheduled,
+            status: 'scheduled',
             winner: m.winner,
             bracket: m.bracket || 'winners',
             isBronzeMatch: m.isBronzeMatch || false
