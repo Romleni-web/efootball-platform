@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
 const Payment = require('../models/Payment');
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { TournamentLogicFactory } = require('../services/tournamentLogic');
 
-// Middleware
+// Middleware to verify token
 const auth = async (req, res, next) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -24,199 +25,48 @@ const auth = async (req, res, next) => {
     }
 };
 
+// Admin middleware
 const adminOnly = async (req, res, next) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+    }
     next();
 };
-
-// POST /api/admin/tournaments
-router.post('/tournaments', auth, adminOnly, [
-    body('name').trim().notEmpty(),
-    body('entryFee').isInt({ min: 0 }),
-    body('maxPlayers').isInt({ min: 2 }),
-    body('startDate').isISO8601(),
-    body('adminPhone').notEmpty()
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
-
-        const { name, description, entryFee, maxPlayers, startDate, adminPhone, whatsappLink } = req.body;
-
-        const tournament = new Tournament({
-            name,
-            description,
-            entryFee,
-            maxPlayers,
-            startDate: new Date(startDate),
-            adminPhone,
-            whatsappLink,
-            createdBy: req.user.id,
-            prizePool: 0
-        });
-
-        await tournament.save();
-        res.status(201).json({ message: 'Tournament created successfully', tournament });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// POST /api/admin/tournaments/:id/start
-router.post('/tournaments/:id/start', auth, adminOnly, async (req, res) => {
-    try {
-        const tournament = await Tournament.findById(req.params.id).populate('registeredPlayers.user');
-
-        if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
-        if (tournament.status !== 'open') return res.status(400).json({ message: 'Tournament already started or finished' });
-
-        const paidPlayers = tournament.registeredPlayers.filter(p => p.paid).map(p => p.user);
-        if (paidPlayers.length < 2) return res.status(400).json({ message: 'Need at least 2 paid players to start' });
-
-        const shuffled = [...paidPlayers].sort(() => Math.random() - 0.5);
-        const numPlayers = shuffled.length;
-        const rounds = Math.ceil(Math.log2(numPlayers));
-        const bracketSize = Math.pow(2, rounds);
-
-        const matches = [];
-        const matchesByRound = {};
-
-        for (let r = 1; r <= rounds; r++) {
-            matchesByRound[r] = [];
-            const numMatches = Math.pow(2, rounds - r);
-            
-            for (let m = 1; m <= numMatches; m++) {
-                const match = new Match({
-                    tournament: tournament._id,
-                    round: r,
-                    matchNumber: m,
-                    player1: null,
-                    player2: null,
-                    status: 'scheduled'
-                });
-                await match.save();
-                matchesByRound[r].push(match);
-                matches.push(match);
-            }
-        }
-
-        for (let r = 1; r < rounds; r++) {
-            const currentRoundMatches = matchesByRound[r];
-            const nextRoundMatches = matchesByRound[r + 1];
-            
-            for (let i = 0; i < currentRoundMatches.length; i++) {
-                const nextMatchIndex = Math.floor(i / 2);
-                currentRoundMatches[i].nextMatch = nextRoundMatches[nextMatchIndex]._id;
-                await currentRoundMatches[i].save();
-            }
-        }
-
-        const firstRoundMatches = matchesByRound[1];
-        for (let i = 0; i < shuffled.length; i += 2) {
-            const matchIndex = Math.floor(i / 2);
-            if (firstRoundMatches[matchIndex]) {
-                firstRoundMatches[matchIndex].player1 = shuffled[i]._id;
-                if (shuffled[i + 1]) {
-                    firstRoundMatches[matchIndex].player2 = shuffled[i + 1]._id;
-                } else {
-                    firstRoundMatches[matchIndex].player2 = null;
-                    firstRoundMatches[matchIndex].winner = shuffled[i]._id;
-                    firstRoundMatches[matchIndex].status = 'completed';
-                    
-                    if (firstRoundMatches[matchIndex].nextMatch) {
-                        const nextMatch = await Match.findById(firstRoundMatches[matchIndex].nextMatch);
-                        if (!nextMatch.player1) nextMatch.player1 = shuffled[i]._id;
-                        else nextMatch.player2 = shuffled[i]._id;
-                        await nextMatch.save();
-                    }
-                }
-                await firstRoundMatches[matchIndex].save();
-            }
-        }
-
-        tournament.status = 'ongoing';
-        tournament.matches = matches.map(m => m._id);
-        await tournament.save();
-
-        res.json({
-            message: 'Tournament started successfully',
-            tournament: { id: tournament._id, status: tournament.status, totalMatches: matches.length, players: paidPlayers.length }
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
 
 // GET /api/admin/stats
 router.get('/stats', auth, adminOnly, async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments({ role: 'player' });
+        const totalUsers = await User.countDocuments();
         const totalTournaments = await Tournament.countDocuments();
+        const totalMatches = await Match.countDocuments();
+        const totalPayments = await Payment.countDocuments();
         const pendingPayments = await Payment.countDocuments({ status: 'pending' });
-        const pendingResults = await Match.countDocuments({ 
-            $or: [
-                { status: 'disputed' },
-                { status: 'ongoing', 'submissions.player1': { $exists: true } },
-                { status: 'ongoing', 'submissions.player2': { $exists: true } }
-            ]
-        });
         
-        const revenue = await Payment.aggregate([
-            { $match: { status: 'verified', type: 'entry' } },
+        // Calculate total revenue from approved payments
+        const revenueResult = await Payment.aggregate([
+            { $match: { status: 'approved' } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
+        const totalRevenue = revenueResult[0]?.total || 0;
 
-        res.json({ 
-            totalUsers, 
-            totalTournaments, 
-            pendingPayments, 
-            pendingResults,
-            totalRevenue: revenue[0]?.total || 0 
+        res.json({
+            totalUsers,
+            totalTournaments,
+            totalMatches,
+            totalPayments,
+            pendingPayments,
+            totalRevenue
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// POST /api/admin/send-prize
-router.post('/send-prize', auth, adminOnly, [
-    body('userId').notEmpty(),
-    body('tournamentId').notEmpty(),
-    body('amount').isInt({ min: 0 }),
-    body('mpesaNumber').notEmpty()
-], async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
-
-        const { userId, tournamentId, amount, mpesaNumber } = req.body;
-
-        const payment = new Payment({
-            user: userId,
-            tournament: tournamentId,
-            type: 'prize',
-            amount,
-            mpesaNumber,
-            status: 'verified',
-            verifiedBy: req.user.id,
-            verifiedAt: new Date()
-        });
-
-        await payment.save();
-        res.json({ message: 'Prize payment recorded successfully', payment: { id: payment._id, amount, status: 'verified' } });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// ============================================
-// NEW: MATCH RESULT VERIFICATION (Admin)
-// ============================================
-
-// GET /api/admin/results/pending - Get matches needing admin review
+// GET /api/admin/results/pending
 router.get('/results/pending', auth, adminOnly, async (req, res) => {
     try {
-        const matches = await Match.find({
+        // Find matches with disputes or single submissions
+        const pendingMatches = await Match.find({
             $or: [
                 { status: 'disputed' },
                 { 
@@ -224,18 +74,19 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
                     'submissions.player1': { $exists: true },
                     'submissions.player2': { $exists: false }
                 },
-                {
+                { 
                     status: 'ongoing',
-                    'submissions.player1': { $exists: false },
-                    'submissions.player2': { $exists: true }
+                    'submissions.player2': { $exists: true },
+                    'submissions.player1': { $exists: false }
                 }
             ]
         })
         .populate('tournament', 'name')
-        .populate('player1', 'username efootballId')
-        .populate('player2', 'username efootballId');
+        .populate('player1', 'username')
+        .populate('player2', 'username');
 
-        const results = matches.map(m => ({
+        // Format with submission info
+        const formatted = pendingMatches.map(m => ({
             matchId: m._id,
             tournament: m.tournament,
             round: m.round,
@@ -250,130 +101,297 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
                 submitted: !!m.submissions?.player2,
                 submission: m.submissions?.player2
             },
-            submissionsMatch: m.submissions?.player1 && m.submissions?.player2 ?
-                (m.submissions.player1.score1 === m.submissions.player2.score1 &&
-                 m.submissions.player1.score2 === m.submissions.player2.score2 &&
-                 m.submissions.player1.winner === m.submissions.player2.winner) : false,
-            disputeReason: m.status === 'disputed' ? 'Results do not match' : 'Waiting for opponent'
+            disputeReason: m.status === 'disputed' ? 'Results do not match' : null
         }));
 
-        res.json(results);
+        res.json(formatted);
     } catch (error) {
-        console.error('Get pending results error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
-// POST /api/admin/matches/:id/resolve - Admin resolves disputed match
-router.post('/matches/:id/resolve', auth, adminOnly, async (req, res) => {
+// POST /api/admin/matches/:matchId/resolve
+router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
     try {
-        const { id } = req.params;
         const { decision, score1, score2, winner, reason } = req.body;
-        // decision: 'player1_correct', 'player2_correct', 'custom'
-
-        const match = await Match.findById(id)
-            .populate('player1')
-            .populate('player2');
+        const match = await Match.findById(req.params.matchId);
 
         if (!match) return res.status(404).json({ message: 'Match not found' });
-        if (match.status === 'completed') return res.status(400).json({ message: 'Match already completed' });
 
-        let finalScore1, finalScore2, finalWinner;
-
-        if (decision === 'player1_correct') {
-            if (!match.submissions?.player1) return res.status(400).json({ message: 'Player 1 has no submission' });
-            finalScore1 = match.submissions.player1.score1;
-            finalScore2 = match.submissions.player1.score2;
-            finalWinner = match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id;
+        if (decision === 'custom') {
+            // Admin sets custom result
+            match.status = 'completed';
+            match.score1 = parseInt(score1);
+            match.score2 = parseInt(score2);
+            match.winner = winner === 'player1' ? match.player1 : match.player2;
+            match.adminVerification = {
+                status: 'approved',
+                verifiedBy: req.user.id,
+                verifiedAt: new Date(),
+                finalScore1: parseInt(score1),
+                finalScore2: parseInt(score2),
+                finalWinner: winner === 'player1' ? match.player1 : match.player2
+            };
+        } else if (decision === 'player1_correct') {
+            // Player 1's submission was correct
+            const s1 = match.submissions.player1;
+            match.status = 'completed';
+            match.score1 = s1.score1;
+            match.score2 = s1.score2;
+            match.winner = s1.winner === 'player1' ? match.player1 : match.player2;
+            match.adminVerification = {
+                status: 'approved',
+                verifiedBy: req.user.id,
+                verifiedAt: new Date(),
+                rejectionReason: reason || 'Player 2 submission rejected'
+            };
         } else if (decision === 'player2_correct') {
-            if (!match.submissions?.player2) return res.status(400).json({ message: 'Player 2 has no submission' });
-            finalScore1 = match.submissions.player2.score1;
-            finalScore2 = match.submissions.player2.score2;
-            finalWinner = match.submissions.player2.winner === 'player1' ? match.player1._id : match.player2._id;
-        } else if (decision === 'custom') {
-            if (score1 === undefined || score2 === undefined || !winner) {
-                return res.status(400).json({ message: 'Custom decision requires score1, score2, and winner' });
-            }
-            finalScore1 = parseInt(score1);
-            finalScore2 = parseInt(score2);
-            finalWinner = winner === 'player1' ? match.player1._id : match.player2._id;
-        } else {
-            return res.status(400).json({ message: 'Invalid decision. Use: player1_correct, player2_correct, or custom' });
+            // Player 2's submission was correct
+            const s2 = match.submissions.player2;
+            match.status = 'completed';
+            match.score1 = s2.score1;
+            match.score2 = s2.score2;
+            match.winner = s2.winner === 'player1' ? match.player1 : match.player2;
+            match.adminVerification = {
+                status: 'approved',
+                verifiedBy: req.user.id,
+                verifiedAt: new Date(),
+                rejectionReason: reason || 'Player 1 submission rejected'
+            };
         }
-
-        // Apply final result
-        match.score1 = finalScore1;
-        match.score2 = finalScore2;
-        match.winner = finalWinner;
-        match.status = 'completed';
-        match.adminVerification = {
-            status: 'approved',
-            verifiedBy: req.user.id,
-            verifiedAt: new Date(),
-            finalScore1,
-            finalScore2,
-            finalWinner,
-            rejectionReason: reason || ''
-        };
 
         await match.save();
 
-        // Advance winner to next round
-        if (match.nextMatch) {
-            const nextMatch = await Match.findById(match.nextMatch);
-            if (nextMatch) {
-                if (!nextMatch.player1) nextMatch.player1 = finalWinner;
-                else if (!nextMatch.player2) nextMatch.player2 = finalWinner;
-                await nextMatch.save();
+        // Update tournament standings or advance bracket
+        const tournament = await Tournament.findById(match.tournament);
+        if (tournament) {
+            const logic = TournamentLogicFactory.create(tournament);
+            
+            if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
+                tournament.standings = logic.calculateStandings();
+            } else {
+                const nextMatch = await logic.advanceWinner(match);
+                if (nextMatch) {
+                    await Match.findByIdAndUpdate(nextMatch._id, {
+                        player1: nextMatch.player1,
+                        player2: nextMatch.player2,
+                        status: nextMatch.status
+                    });
+                }
             }
+
+            // Check if tournament complete
+            const incompleteMatches = await Match.find({
+                _id: { $in: tournament.matches },
+                status: { $nin: ['completed', 'bye'] }
+            });
+
+            if (incompleteMatches.length === 0) {
+                tournament.status = 'finished';
+                const rankings = logic.getFinalRankings ? 
+                    logic.getFinalRankings(tournament.matches) : 
+                    logic.calculateStandings();
+                
+                tournament.winners = rankings.map((r, i) => ({
+                    rank: r.rank || (i + 1),
+                    player: r.player,
+                    prize: calculatePrize(tournament.prizePool, i + 1, tournament.prizeDistribution)
+                }));
+            }
+
+            await tournament.save();
         }
 
-        // Update player stats
-        await updatePlayerStats(match);
-
-        res.json({
-            success: true,
-            message: 'Match resolved by admin',
-            match: {
-                id: match._id,
-                score1: finalScore1,
-                score2: finalScore2,
-                winner: finalWinner,
-                status: 'completed'
-            }
-        });
+        res.json({ success: true, match });
     } catch (error) {
-        console.error('Resolve match error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: error.message });
     }
 });
 
-// Helper function to update player stats
-async function updatePlayerStats(match) {
+// POST /api/admin/tournaments - CREATE TOURNAMENT WITH FORMAT SUPPORT
+router.post('/tournaments', auth, adminOnly, [
+    body('name').trim().notEmpty().withMessage('Tournament name is required'),
+    body('entryFee').isInt({ min: 0 }).withMessage('Entry fee must be a positive number'),
+    body('startDate').notEmpty().withMessage('Start date is required'),
+    body('adminPhone').notEmpty().withMessage('Admin phone is required')
+], async (req, res) => {
     try {
-        const winner = await User.findById(match.winner);
-        const player1 = await User.findById(match.player1);
-        const player2 = await User.findById(match.player2);
-
-        if (winner) {
-            winner.wins = (winner.wins || 0) + 1;
-            winner.points = (winner.points || 0) + 3;
-            await winner.save();
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                message: 'Validation failed', 
+                errors: errors.array() 
+            });
         }
 
-        if (player1 && player1._id.toString() !== match.winner?.toString()) {
-            player1.losses = (player1.losses || 0) + 1;
-            await player1.save();
+        const { 
+            name, 
+            description, 
+            format, 
+            settings,
+            entryFee, 
+            prizePool,
+            prizeDistribution,
+            startDate, 
+            endDate,
+            adminPhone, 
+            whatsappLink 
+        } = req.body;
+
+        // Validate format
+        const validFormats = ['single_elimination', 'double_elimination', 'round_robin', 'swiss', 'league'];
+        const selectedFormat = format || 'single_elimination';
+        
+        if (!validFormats.includes(selectedFormat)) {
+            return res.status(400).json({ 
+                message: `Invalid format. Must be one of: ${validFormats.join(', ')}` 
+            });
         }
 
-        if (player2 && player2._id.toString() !== match.winner?.toString()) {
-            player2.losses = (player2.losses || 0) + 1;
-            await player2.save();
-        }
-    } catch (err) {
-        console.error('Update stats error:', err);
+        // Build settings with defaults based on format
+        const tournamentSettings = {
+            maxPlayers: parseInt(settings?.maxPlayers) || 32,
+            minPlayers: parseInt(settings?.minPlayers) || 2,
+            bestOf: parseInt(settings?.bestOf) || 1,
+            bronzeMatch: settings?.bronzeMatch || false,
+            rounds: parseInt(settings?.rounds) || 1,
+            pointsWin: parseInt(settings?.pointsWin) || 3,
+            pointsDraw: parseInt(settings?.pointsDraw) || 1,
+            pointsLoss: parseInt(settings?.pointsLoss) || 0,
+            swissRounds: parseInt(settings?.swissRounds) || 5
+        };
+
+        const tournament = new Tournament({
+            name,
+            description: description || '',
+            format: selectedFormat,
+            settings: tournamentSettings,
+            entryFee: parseInt(entryFee) || 0,
+            prizePool: parseInt(prizePool) || 0,
+            prizeDistribution: prizeDistribution || { first: 50, second: 30, third: 20 },
+            startDate: new Date(startDate),
+            endDate: endDate ? new Date(endDate) : undefined,
+            adminPhone,
+            whatsappLink: whatsappLink || '',
+            createdBy: req.user.id,
+            status: 'open',
+            registeredPlayers: [],
+            matches: [],
+            standings: [],
+            winners: []
+        });
+
+        await tournament.save();
+        
+        res.status(201).json({ 
+            success: true,
+            message: 'Tournament created successfully', 
+            tournament: {
+                _id: tournament._id,
+                name: tournament.name,
+                format: tournament.format,
+                settings: tournament.settings,
+                entryFee: tournament.entryFee,
+                status: tournament.status,
+                createdAt: tournament.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('Create tournament error:', error);
+        res.status(500).json({ 
+            message: error.message || 'Server error creating tournament' 
+        });
     }
+});
+
+// POST /api/admin/tournaments/:id/start - GENERATE BRACKET
+router.post('/tournaments/:id/start', auth, adminOnly, async (req, res) => {
+    try {
+        const tournament = await Tournament.findById(req.params.id)
+            .populate('registeredPlayers.user');
+
+        if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+        if (tournament.bracketGeneratedAt) {
+            return res.status(400).json({ message: 'Bracket already generated' });
+        }
+        if (tournament.status !== 'open') {
+            return res.status(400).json({ message: `Tournament is ${tournament.status}` });
+        }
+
+        const paidPlayers = tournament.registeredPlayers.filter(p => p.paid);
+        
+        if (paidPlayers.length < tournament.settings.minPlayers) {
+            return res.status(400).json({ 
+                message: `Need at least ${tournament.settings.minPlayers} paid players. Currently have ${paidPlayers.length}.` 
+            });
+        }
+
+        const logic = TournamentLogicFactory.create(tournament);
+        const matchInstances = await logic.generateBracket(paidPlayers);
+
+        const savedMatches = await Match.insertMany(matchInstances.map(m => ({
+            tournament: tournament._id,
+            round: m.round,
+            matchNumber: m.matchNumber,
+            player1: m.player1,
+            player2: m.player2,
+            status: m.status,
+            winner: m.winner,
+            bracket: m.bracket || 'winners',
+            isBronzeMatch: m.isBronzeMatch || false
+        })));
+
+        tournament.matches = savedMatches.map(m => m._id);
+        tournament.bracketGeneratedAt = new Date();
+        tournament.status = 'ongoing';
+        tournament.currentRound = 1;
+        await tournament.save();
+
+        res.json({ 
+            success: true,
+            message: 'Tournament started successfully',
+            tournament: {
+                _id: tournament._id,
+                format: tournament.format,
+                matchesGenerated: savedMatches.length,
+                status: tournament.status,
+                currentRound: tournament.currentRound
+            }
+        });
+    } catch (error) {
+        console.error('Start tournament error:', error);
+        res.status(500).json({ message: error.message || 'Server error' });
+    }
+});
+
+// POST /api/admin/send-prize - RECORD PRIZE PAYMENT
+router.post('/send-prize', auth, adminOnly, async (req, res) => {
+    try {
+        const { tournamentId, userId, amount, mpesaNumber, transactionCode } = req.body;
+        
+        const payment = new Payment({
+            user: userId,
+            tournament: tournamentId,
+            type: 'prize',
+            amount,
+            mpesaNumber,
+            transactionCode,
+            status: 'approved',
+            approvedBy: req.user.id,
+            approvedAt: new Date()
+        });
+
+        await payment.save();
+        res.json({ success: true, message: 'Prize payment recorded', payment });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Helper function
+function calculatePrize(pool, rank, distribution) {
+    const percentages = [distribution.first, distribution.second, distribution.third];
+    return pool * (percentages[rank - 1] || 0) / 100;
 }
 
-// CRITICAL: Export the router
 module.exports = router;
