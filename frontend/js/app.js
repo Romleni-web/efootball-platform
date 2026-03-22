@@ -530,50 +530,62 @@ const Pages = {
     },
 
     async leaderboard() {
-        const mainContent = document.getElementById('mainContent');
-        mainContent.innerHTML = '<div class="spinner"></div>';
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = '<div class="spinner"></div>';
 
-        try {
-            const players = await API.getLeaderboard();
-            mainContent.innerHTML = `
-                <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">Global Leaderboard</h2>
-                <div class="leaderboard-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Team</th>
-                                <th>Points</th>
-                                <th>Wins</th>
-                                <th>Losses</th>
-                                <th>Win Rate</th>
+    try {
+        const players = await API.getLeaderboard();
+        mainContent.innerHTML = `
+            <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">🏆 Global Leaderboard</h2>
+            <div class="leaderboard-table">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Rank</th>
+                            <th style="padding: 1rem; text-align: left; font-family: Orbitron; color: var(--gray);">Player</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Played</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">W</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">L</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Win%</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GF</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GA</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--accent);">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${players.map((p, idx) => `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${idx < 3 ? `background: ${idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${p._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important;' : ''}">
+                                <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
+                                    ${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : p.rank}
+                                </td>
+                                <td style="padding: 0.75rem;">
+                                    <strong style="color: var(--light); font-size: 1.05rem;">${p.username}</strong>
+                                    ${p.teamName ? `<br><small style="color: var(--gray);">${p.teamName}</small>` : ''}
+                                    ${p.efootballId ? `<br><small style="color: var(--primary); font-family: Orbitron;">ID: ${p.efootballId}</small>` : ''}
+                                    ${p._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
+                                </td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
+                                <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
+                                    ${p.points}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${players.map((p, idx) => `
-                                <tr>
-                                    <td class="rank rank-${idx < 3 ? idx + 1 : ''}">#${idx + 1}</td>
-                                    <td>
-                                        <strong>${p.username}</strong>
-                                        ${p.efootballId ? `<br><small style="color: var(--gray);">ID: ${p.efootballId}</small>` : ''}
-                                    </td>
-                                    <td>${p.teamName || '-'}</td>
-                                    <td style="color: var(--accent); font-weight: bold;">${p.points || 0}</td>
-                                    <td style="color: var(--success);">${p.wins || 0}</td>
-                                    <td style="color: var(--danger);">${p.losses || 0}</td>
-                                    <td>${p.wins + p.losses > 0 ? Math.round((p.wins / (p.wins + p.losses)) * 100) : 0}%</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } catch (error) {
-            mainContent.innerHTML = `<div class="empty-state"><p>Error loading leaderboard</p></div>`;
-        }
-    },
-
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <p style="color: var(--gray); text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                Points: 3 for win, 1 for loss | Updated from all tournament matches
+            </p>
+        `;
+    } catch (error) {
+        mainContent.innerHTML = `<div class="empty-state"><p>Error loading leaderboard: ${error.message}</p></div>`;
+    }
+},
     async admin() {
         const mainContent = document.getElementById('mainContent');
         

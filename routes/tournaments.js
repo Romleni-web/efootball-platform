@@ -282,8 +282,8 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
     }
 });
 
-// GET bracket
-router.get('/:id/bracket', auth, async (req, res) => {
+// GET bracket - PUBLIC (masks names if not registered)
+router.get('/:id/bracket', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id).populate({
             path: 'matches',
@@ -296,37 +296,59 @@ router.get('/:id/bracket', auth, async (req, res) => {
 
         if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
-        const isRegistered = tournament.registeredPlayers.some(p => 
-            p.user.toString() === req.user._id.toString()
-        );
-        if (!isRegistered && req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Must be registered to view bracket' });
-        }
-
         const logic = TournamentLogicFactory.create(tournament);
         const bracketData = logic.getBracketData(tournament.matches);
 
+        // Check if user is registered (if logged in)
+        let isRegistered = false;
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
+                isRegistered = tournament.registeredPlayers.some(p => 
+                    p.user.toString() === decoded.id
+                );
+            } catch (e) {
+                // Invalid token, treat as not registered
+            }
+        }
+
+        // If not registered and not admin, mask player names in pending matches
+        let sanitizedData = bracketData;
+        if (!isRegistered && tournament.status !== 'finished') {
+            sanitizedData = bracketData.map(round => ({
+                ...round,
+                matches: round.matches.map(match => ({
+                    ...match,
+                    player1: match.player1 ? { username: 'Registered Player' } : null,
+                    player2: match.player2 ? { username: 'Registered Player' } : null
+                }))
+            }));
+        }
+
         res.json({
             format: tournament.format,
-            rounds: bracketData,
+            rounds: sanitizedData,
             currentRound: tournament.currentRound,
             standings: ['round_robin', 'league', 'swiss'].includes(tournament.format) 
                 ? tournament.standings 
-                : null
+                : null,
+            isRegistered // Tell frontend if user sees full data
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// GET standings
+// GET standings - PUBLIC (no auth required)
 router.get('/:id/standings', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
-            .populate('standings.player', 'username teamName')
+            .populate('standings.player', 'username teamName efootballId')
             .populate('matches');
 
         if (!tournament) return res.status(404).json({ message: 'Not found' });
+        
         if (!['round_robin', 'league', 'swiss'].includes(tournament.format)) {
             return res.status(400).json({ message: 'Standings only for round-based formats' });
         }

@@ -127,15 +127,117 @@ router.get('/search/:efootballId', auth, async (req, res) => {
     }
 });
 
-// GET /api/users/leaderboard
+// GET /api/users/leaderboard - CALCULATED FROM ACTUAL MATCHES
 router.get('/leaderboard', async (req, res) => {
     try {
-        const players = await User.find({ role: 'player' })
-            .select('username teamName efootballId points wins losses')
-            .sort({ points: -1, wins: -1 })
-            .limit(100);
-        res.json(players);
+        // Aggregate stats from all completed matches
+        const playerStats = await Match.aggregate([
+            // Only completed matches
+            { $match: { status: 'completed', winner: { $ne: null } } },
+            
+            // Group by player1 (when they were player1)
+            {
+                $facet: {
+                    asPlayer1: [
+                        { $group: {
+                            _id: '$player1',
+                            played: { $sum: 1 },
+                            wins: { $sum: { $cond: [{ $eq: ['$winner', '$player1'] }, 1, 0] } },
+                            goalsFor: { $sum: '$score1' },
+                            goalsAgainst: { $sum: '$score2' }
+                        }}
+                    ],
+                    asPlayer2: [
+                        { $group: {
+                            _id: '$player2',
+                            played: { $sum: 1 },
+                            wins: { $sum: { $cond: [{ $eq: ['$winner', '$player2'] }, 1, 0] } },
+                            goalsFor: { $sum: '$score2' },
+                            goalsAgainst: { $sum: '$score1' }
+                        }}
+                    ]
+                }
+            }
+        ]);
+
+        // Combine stats
+        const statsMap = {};
+        
+        // Process player1 stats
+        (playerStats[0]?.asPlayer1 || []).forEach(s => {
+            if (!s._id) return;
+            statsMap[s._id.toString()] = {
+                played: s.played,
+                wins: s.wins,
+                losses: s.played - s.wins,
+                goalsFor: s.goalsFor || 0,
+                goalsAgainst: s.goalsAgainst || 0
+            };
+        });
+
+        // Process player2 stats and merge
+        (playerStats[0]?.asPlayer2 || []).forEach(s => {
+            if (!s._id) return;
+            const id = s._id.toString();
+            if (statsMap[id]) {
+                statsMap[id].played += s.played;
+                statsMap[id].wins += s.wins;
+                statsMap[id].losses += s.played - s.wins;
+                statsMap[id].goalsFor += s.goalsFor || 0;
+                statsMap[id].goalsAgainst += s.goalsAgainst || 0;
+            } else {
+                statsMap[id] = {
+                    played: s.played,
+                    wins: s.wins,
+                    losses: s.played - s.wins,
+                    goalsFor: s.goalsFor || 0,
+                    goalsAgainst: s.goalsAgainst || 0
+                };
+            }
+        });
+
+        // Get user details and calculate points
+        const userIds = Object.keys(statsMap);
+        const users = await User.find({ _id: { $in: userIds }, role: 'player' })
+            .select('username teamName efootballId');
+
+        const leaderboard = users.map(u => {
+            const s = statsMap[u._id.toString()];
+            const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : 0;
+            const goalDiff = s.goalsFor - s.goalsAgainst;
+            
+            // Points system: 3 per win, 1 per loss (participation)
+            const points = (s.wins * 3) + (s.losses * 1);
+
+            return {
+                _id: u._id,
+                username: u.username,
+                teamName: u.teamName,
+                efootballId: u.efootballId,
+                played: s.played,
+                wins: s.wins,
+                losses: s.losses,
+                winRate,
+                goalsFor: s.goalsFor,
+                goalsAgainst: s.goalsAgainst,
+                goalDifference: goalDiff,
+                points
+            };
+        });
+
+        // Sort by points, then win rate, then goal difference
+        leaderboard.sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+            return b.goalDifference - a.goalDifference;
+        });
+
+        // Add rank
+        leaderboard.forEach((p, i) => p.rank = i + 1);
+
+        res.json(leaderboard);
     } catch (error) {
+        console.error('Leaderboard error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
