@@ -69,6 +69,9 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             screenshotPath: req.file ? req.file.path : null
         };
 
+        // ADDED: Tell MongoDB the nested object changed
+        match.markModified('submissions');
+
         await match.save();
 
         const bothSubmitted = match.submissions?.player1 && match.submissions?.player2;
