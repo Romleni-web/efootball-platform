@@ -282,7 +282,7 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
     }
 });
 
-// GET bracket - PUBLIC (masks names if not registered)
+// GET bracket - PUBLIC (shows real names to everyone)
 router.get('/:id/bracket', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id).populate({
@@ -299,41 +299,13 @@ router.get('/:id/bracket', async (req, res) => {
         const logic = TournamentLogicFactory.create(tournament);
         const bracketData = logic.getBracketData(tournament.matches);
 
-        // Check if user is registered (if logged in)
-        let isRegistered = false;
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (token) {
-            try {
-                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
-                isRegistered = tournament.registeredPlayers.some(p => 
-                    p.user.toString() === decoded.id
-                );
-            } catch (e) {
-                // Invalid token, treat as not registered
-            }
-        }
-
-        // If not registered and not admin, mask player names in pending matches
-        let sanitizedData = bracketData;
-        if (!isRegistered && tournament.status !== 'finished') {
-            sanitizedData = bracketData.map(round => ({
-                ...round,
-                matches: round.matches.map(match => ({
-                    ...match,
-                    player1: match.player1 ? { username: 'Registered Player' } : null,
-                    player2: match.player2 ? { username: 'Registered Player' } : null
-                }))
-            }));
-        }
-
         res.json({
             format: tournament.format,
-            rounds: sanitizedData,
+            rounds: bracketData,
             currentRound: tournament.currentRound,
             standings: ['round_robin', 'league', 'swiss'].includes(tournament.format) 
                 ? tournament.standings 
-                : null,
-            isRegistered // Tell frontend if user sees full data
+                : null
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
