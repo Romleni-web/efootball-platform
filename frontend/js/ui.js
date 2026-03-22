@@ -628,8 +628,8 @@ const UI = {
         container.innerHTML = html || '<p style="color: var(--gray); font-size: 0.9rem; margin: 0;">No additional settings for this format.</p>';
     },
 
-    // Submit Match Result Modal
-    showSubmitResultModal(matchId, player1Name, player2Name) {
+    // FIXED: Submit Match Result Modal - now accepts tournamentId
+    showSubmitResultModal(matchId, tournamentId, player1Name, player2Name) {
         const p1 = player1Name || 'You';
         const p2 = player2Name || 'Opponent';
         
@@ -721,7 +721,8 @@ const UI = {
 
             try {
                 UI.showLoading();
-                const result = await API.submitMatchResult(matchId, {
+                // ✅ FIXED: Pass tournamentId and matchId to API
+                const result = await API.submitMatchResult(tournamentId, matchId, {
                     score1,
                     score2,
                     winner,
@@ -731,10 +732,10 @@ const UI = {
                 
                 UI.closeModal();
                 
-                if (result.autoApproved) {
+                if (result.match?.status === 'completed') {
                     UI.showToast('Match completed! Both submissions matched.', 'success');
-                } else if (result.disputed) {
-                    UI.showToast('Result submitted but differs from opponent - admin will review', 'warning');
+                } else if (result.match?.status === 'disputed') {
+                    UI.showToast('Result disputed - admin will review', 'warning');
                 } else {
                     UI.showToast('Result submitted! Waiting for opponent.', 'success');
                 }

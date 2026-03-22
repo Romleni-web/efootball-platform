@@ -141,12 +141,12 @@ const API = {
         return this.authenticatedRequest(`/matches/${matchId}/status`);
     },
 
-    // Submit match result - FIXED for dual submission
-    async submitMatchResult(matchId, resultData) {
+    // FIXED: Submit match result - now includes tournamentId in URL
+    async submitMatchResult(tournamentId, matchId, resultData) {
         const formData = new FormData();
         formData.append('score1', resultData.score1);
         formData.append('score2', resultData.score2);
-        formData.append('winner', resultData.winner); // 'player1' or 'player2'
+        formData.append('winner', resultData.winner);
         
         if (resultData.notes) {
             formData.append('notes', resultData.notes);
@@ -157,7 +157,9 @@ const API = {
 
         // IMPORTANT: Don't set Content-Type, let browser set it with boundary
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/matches/${matchId}/result`, {
+        
+        // ✅ FIXED URL: Now includes tournamentId
+        const response = await fetch(`${API_BASE_URL}/tournaments/${tournamentId}/matches/${matchId}/result`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
