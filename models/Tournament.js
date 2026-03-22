@@ -10,6 +10,25 @@ const tournamentSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    // NEW: Tournament format
+    format: {
+        type: String,
+        enum: ['single_elimination', 'double_elimination', 'round_robin', 'swiss', 'league'],
+        default: 'single_elimination'
+    },
+    // NEW: Format-specific settings
+    settings: {
+        bestOf: { type: Number, default: 1 },
+        bronzeMatch: { type: Boolean, default: false },
+        rounds: { type: Number, default: 1 },
+        pointsWin: { type: Number, default: 3 },
+        pointsDraw: { type: Number, default: 1 },
+        pointsLoss: { type: Number, default: 0 },
+        swissRounds: { type: Number, default: 5 },
+        maxPlayers: { type: Number, default: 32 },
+        minPlayers: { type: Number, default: 2 },
+        registrationDeadline: { type: Date }
+    },
     entryFee: {
         type: Number,
         required: true,
@@ -19,9 +38,10 @@ const tournamentSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    maxPlayers: {
-        type: Number,
-        default: 32
+    prizeDistribution: {
+        first: { type: Number, default: 50 },
+        second: { type: Number, default: 30 },
+        third: { type: Number, default: 20 }
     },
     adminPhone: {
         type: String,
@@ -35,9 +55,12 @@ const tournamentSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    endDate: {
+        type: Date
+    },
     status: {
         type: String,
-        enum: ['open', 'ongoing', 'finished'],
+        enum: ['draft', 'open', 'registration_closed', 'ongoing', 'finished'],
         default: 'open'
     },
     registeredPlayers: [{
@@ -45,18 +68,30 @@ const tournamentSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
         },
-        paid: {
-            type: Boolean,
-            default: false
-        },
+        seed: { type: Number, default: null },
+        paid: { type: Boolean, default: false },
         paymentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Payment'
         },
-        registeredAt: {
-            type: Date,
-            default: Date.now
-        }
+        registeredAt: { type: Date, default: Date.now },
+        checkedIn: { type: Boolean, default: false }
+    }],
+    // NEW: Standings for round-based formats
+    standings: [{
+        player: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        played: { type: Number, default: 0 },
+        wins: { type: Number, default: 0 },
+        draws: { type: Number, default: 0 },
+        losses: { type: Number, default: 0 },
+        goalsFor: { type: Number, default: 0 },
+        goalsAgainst: { type: Number, default: 0 },
+        goalDifference: { type: Number, default: 0 },
+        points: { type: Number, default: 0 },
+        rank: { type: Number }
     }],
     matches: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -67,13 +102,21 @@ const tournamentSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    // ADDED: Track when bracket was generated
-    bracketGeneratedAt: {
-        type: Date,
-        default: null
-    }
+    bracketGeneratedAt: { type: Date, default: null },
+    currentRound: { type: Number, default: 0 },
+    winners: [{
+        rank: Number,
+        player: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        prize: Number
+    }]
 }, {
     timestamps: true
 });
+
+tournamentSchema.index({ status: 1, format: 1 });
+tournamentSchema.index({ 'registeredPlayers.user': 1 });
 
 module.exports = mongoose.model('Tournament', tournamentSchema);

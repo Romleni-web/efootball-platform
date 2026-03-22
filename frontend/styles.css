@@ -914,3 +914,115 @@ body::before {
 .btn-warning:hover {
     background: #d97706;
 }
+
+/* Format Badge */
+.format-badge {
+    font-family: Orbitron;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--glass);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Tournament Tabs */
+.tournament-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin: 2rem 0 1rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--gray);
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    font-family: Orbitron;
+    font-size: 0.9rem;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    color: var(--light);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    background: rgba(76, 175, 80, 0.1);
+    border-bottom: 2px solid var(--primary);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Standings Table */
+.standings-container {
+    background: var(--glass);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.standings-table th {
+    font-family: Orbitron;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray);
+}
+
+.standings-table td {
+    font-size: 0.95rem;
+}
+
+.standings-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Dynamic Settings Panel */
+#dynamicSettings {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#dynamicSettings .form-group {
+    margin-bottom: 0.5rem;
+}
+
+#dynamicSettings label {
+    font-size: 0.9rem;
+    color: var(--gray);
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+/* Format Select */
+#formatSelect {
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#formatSelect option {
+    padding: 0.5rem;
+    background: var(--dark);
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -49,6 +49,40 @@ const Router = {
 };
 
 const Pages = {
+    // Tournament Format Configuration
+    TOURNAMENT_FORMATS: {
+        single_elimination: {
+            name: 'Single Elimination',
+            icon: '⚔️',
+            description: 'Lose once and you\'re out. Fast and simple.',
+            recommended: '8-64 players'
+        },
+        double_elimination: {
+            name: 'Double Elimination',
+            icon: '🛡️',
+            description: 'Two losses to eliminate. Fairer but longer.',
+            recommended: '8-32 players'
+        },
+        round_robin: {
+            name: 'Round Robin',
+            icon: '🔄',
+            description: 'Everyone plays everyone. Best for small groups.',
+            recommended: '4-12 players'
+        },
+        swiss: {
+            name: 'Swiss System',
+            icon: '🇨🇭',
+            description: 'Play similar-skilled opponents. Chess/Esports standard.',
+            recommended: '8-128 players'
+        },
+        league: {
+            name: 'League',
+            icon: '🏆',
+            description: 'Season-long competition with home/away fixtures.',
+            recommended: '4-20 players'
+        }
+    },
+
     home() {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = `
@@ -185,6 +219,7 @@ const Pages = {
         }
     },
 
+    // UPDATED: Tournament Detail with Format Support
     async tournamentDetail(id) {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = '<div class="spinner"></div>';
@@ -195,19 +230,29 @@ const Pages = {
                 p => p.user?._id === Auth.getUser()?._id
             );
 
+            // Check if round-based format
+            const isRoundBased = ['round_robin', 'league', 'swiss'].includes(tournament.format);
+            const formatInfo = this.TOURNAMENT_FORMATS[tournament.format] || this.TOURNAMENT_FORMATS.single_elimination;
+            
             mainContent.innerHTML = `
                 <div class="tournament-detail-header">
                     <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
                         <div>
                             <h1 style="font-family: Orbitron; color: var(--primary);">${tournament.name}</h1>
-                            <p style="color: var(--gray); margin-top: 0.5rem;">${tournament.description || ''}</p>
+                            <p style="color: var(--gray); margin-top: 0.5rem;">
+                                ${tournament.description || ''}
+                                <span class="format-badge" style="background: var(--glass); padding: 0.25rem 0.75rem; border-radius: 20px; margin-left: 0.5rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                    <span>${formatInfo.icon}</span>
+                                    <span>${formatInfo.name}</span>
+                                </span>
+                            </p>
                         </div>
                         <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
                     </div>
                     
                     <div class="stats-grid" style="margin-top: 1.5rem;">
                         <div class="stat-card">
-                            <div class="stat-value">${UI.formatCurrency(tournament.prizePool || tournament.entryFee * 0.8)}</div>
+                            <div class="stat-value">${UI.formatCurrency(tournament.prizePool || tournament.entryFee * tournament.registeredPlayers?.length * 0.8)}</div>
                             <div class="stat-label">Prize Pool</div>
                         </div>
                         <div class="stat-card">
@@ -218,6 +263,17 @@ const Pages = {
                             <div class="stat-value">${tournament.registeredPlayers?.length || 0}</div>
                             <div class="stat-label">Players</div>
                         </div>
+                        ${isRoundBased ? `
+                        <div class="stat-card">
+                            <div class="stat-value">${tournament.settings?.rounds || 1}</div>
+                            <div class="stat-label">Rounds</div>
+                        </div>
+                        ` : `
+                        <div class="stat-card">
+                            <div class="stat-value">Bo${tournament.settings?.bestOf || 1}</div>
+                            <div class="stat-label">Format</div>
+                        </div>
+                        `}
                     </div>
 
                     ${tournament.whatsappLink ? `
@@ -230,19 +286,21 @@ const Pages = {
                 </div>
 
                 <div class="tournament-tabs">
-                    <button class="tab-btn active" onclick="Pages.switchTab('bracket')">Bracket</button>
-                    <button class="tab-btn" onclick="Pages.switchTab('players')">Players</button>
-                    <button class="tab-btn" onclick="Pages.switchTab('matches')">Matches</button>
+                    <button class="tab-btn active" onclick="Pages.switchTab('${isRoundBased ? 'standings' : 'bracket'}')">
+                        ${isRoundBased ? '📊 Standings' : '🏆 Bracket'}
+                    </button>
+                    <button class="tab-btn" onclick="Pages.switchTab('players')">👥 Players</button>
+                    <button class="tab-btn" onclick="Pages.switchTab('matches')">⚽ Matches</button>
                 </div>
 
-                <div id="tab-bracket" class="tab-content active">
-                    ${await this.renderBracket(id)}
+                <div id="tab-${isRoundBased ? 'standings' : 'bracket'}" class="tab-content active">
+                    ${isRoundBased ? this.renderStandings(tournament) : await this.renderBracket(id)}
                 </div>
                 <div id="tab-players" class="tab-content">
                     ${this.renderPlayersList(tournament.registeredPlayers)}
                 </div>
                 <div id="tab-matches" class="tab-content">
-                    ${await this.renderMatches(id)}
+                    ${await this.renderMatches(id, tournament.format)}
                 </div>
             `;
         } catch (error) {
@@ -256,6 +314,63 @@ const Pages = {
         
         event.target.classList.add('active');
         document.getElementById(`tab-${tabName}`).classList.add('active');
+    },
+
+    // NEW: Render Standings for Round-Based Formats
+    renderStandings(tournament) {
+        if (!tournament.standings || tournament.standings.length === 0) {
+            return `
+                <div class="empty-state">
+                    <p>Standings will appear once matches are played</p>
+                    ${tournament.status === 'ongoing' ? '<p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Matches are in progress...</p>' : ''}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="standings-container" style="background: var(--glass); border-radius: 12px; overflow: hidden; margin-top: 1rem;">
+                <table class="standings-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">#</th>
+                            <th style="padding: 1rem; text-align: left; font-family: Orbitron; font-size: 0.85rem;">Player</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">P</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">W</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">D</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">L</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GF</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GA</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GD</th>
+                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem; color: var(--accent);">PTS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tournament.standings.map((s, i) => `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i < 3 ? `background: ${i === 0 ? 'rgba(255,215,0,0.1)' : i === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${s.player?._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important; border-left: 3px solid var(--primary);' : ''}">
+                                <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron;">${s.rank}</td>
+                                <td style="padding: 0.75rem;">
+                                    <strong>${s.player?.username || 'Unknown'}</strong>
+                                    ${s.player?.teamName ? `<br><small style="color: var(--gray);">${s.player.teamName}</small>` : ''}
+                                    ${s.player?._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
+                                </td>
+                                <td style="padding: 0.75rem; text-align: center;">${s.played}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${s.wins}</td>
+                                <td style="padding: 0.75rem; text-align: center;">${s.draws}</td>
+                                <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${s.losses}</td>
+                                <td style="padding: 0.75rem; text-align: center;">${s.goalsFor}</td>
+                                <td style="padding: 0.75rem; text-align: center;">${s.goalsAgainst}</td>
+                                <td style="padding: 0.75rem; text-align: center; ${s.goalDifference > 0 ? 'color: var(--success);' : s.goalDifference < 0 ? 'color: var(--danger);' : ''}; font-weight: 500;">
+                                    ${s.goalDifference > 0 ? '+' : ''}${s.goalDifference}
+                                </td>
+                                <td style="padding: 0.75rem; text-align: center; font-size: 1.1rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
+                                    ${s.points}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     },
 
     async renderBracket(tournamentId) {
@@ -315,8 +430,8 @@ const Pages = {
                         ${players.map((p, idx) => `
                             <tr>
                                 <td>${idx + 1}</td>
-                                <td>${p.user.username}</td>
-                                <td>${p.user.teamName || '-'}</td>
+                                <td>${p.user?.username || 'Unknown'}</td>
+                                <td>${p.user?.teamName || '-'}</td>
                                 <td>${p.paid ? '✅ Paid' : '⏳ Pending'}</td>
                             </tr>
                         `).join('')}
@@ -326,94 +441,93 @@ const Pages = {
         `;
     },
 
-    async renderMatches(tournamentId) {
+    async renderMatches(tournamentId, format) {
         return '<div class="empty-state"><p>Matches will appear here once the tournament starts</p></div>';
     },
 
     async dashboard() {
-    const mainContent = document.getElementById('mainContent');
-    
-    try {
-        const [stats, tournaments, upcoming] = await Promise.all([
-            API.getUserStats(),
-            API.getUserTournaments(),
-            API.getUpcomingMatches()
-        ]);
+        const mainContent = document.getElementById('mainContent');
+        
+        try {
+            const [stats, tournaments, upcoming] = await Promise.all([
+                API.getUserStats(),
+                API.getUserTournaments(),
+                API.getUpcomingMatches()
+            ]);
 
-        // Safely handle upcoming matches with null checks
-        const safeUpcoming = (upcoming || []).map(m => ({
-            ...m,
-            opponent: m.opponent || { username: 'Unknown', efootballId: 'N/A' },
-            player: m.player || { username: 'You' },
-            tournament: m.tournament || { name: 'Unknown Tournament' }
-        }));
+            const safeUpcoming = (upcoming || []).map(m => ({
+                ...m,
+                opponent: m.opponent || { username: 'Unknown', efootballId: 'N/A' },
+                player: m.player || { username: 'You' },
+                tournament: m.tournament || { name: 'Unknown Tournament' }
+            }));
 
-        mainContent.innerHTML = `
-            <div class="dashboard">
-                <aside class="sidebar">
-                    <ul class="sidebar-menu">
-                        <li><a href="#" class="active" onclick="Router.navigate('dashboard')">Overview</a></li>
-                        <li><a href="#" onclick="Router.navigate('profile')">My Profile</a></li>
-                        <li><a href="#" onclick="Router.navigate('tournaments')">Browse Tournaments</a></li>
-                    </ul>
-                </aside>
+            mainContent.innerHTML = `
+                <div class="dashboard">
+                    <aside class="sidebar">
+                        <ul class="sidebar-menu">
+                            <li><a href="#" class="active" onclick="Router.navigate('dashboard')">Overview</a></li>
+                            <li><a href="#" onclick="Router.navigate('profile')">My Profile</a></li>
+                            <li><a href="#" onclick="Router.navigate('tournaments')">Browse Tournaments</a></li>
+                        </ul>
+                    </aside>
 
-                <div class="dashboard-content">
-                    <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">Dashboard</h2>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">${stats?.points || 0}</div>
-                            <div class="stat-label">Points</div>
+                    <div class="dashboard-content">
+                        <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">Dashboard</h2>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${stats?.points || 0}</div>
+                                <div class="stat-label">Points</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${stats?.wins || 0}</div>
+                                <div class="stat-label">Wins</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${stats?.losses || 0}</div>
+                                <div class="stat-label">Losses</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${((stats?.wins || 0) + (stats?.losses || 0)) > 0 ? Math.round((stats.wins / (stats.wins + stats.losses)) * 100) : 0}%</div>
+                                <div class="stat-label">Win Rate</div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${stats?.wins || 0}</div>
-                            <div class="stat-label">Wins</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${stats?.losses || 0}</div>
-                            <div class="stat-label">Losses</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${((stats?.wins || 0) + (stats?.losses || 0)) > 0 ? Math.round((stats.wins / (stats.wins + stats.losses)) * 100) : 0}%</div>
-                            <div class="stat-label">Win Rate</div>
-                        </div>
+
+                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">My Tournaments</h3>
+                        ${tournaments?.length ? `
+                            <div class="card-grid">
+                                ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
+                            </div>
+                        ` : '<p style="color: var(--gray);">You haven\'t joined any tournaments yet.</p>'}
+
+                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Upcoming Matches</h3>
+                        ${safeUpcoming.length ? safeUpcoming.map(m => `
+                            <div class="tournament-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
+                                        <p style="color: var(--gray);">${m.tournament?.name || 'Unknown Tournament'}</p>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
+                                </div>
+                                <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
+                                    <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <code style="background: var(--glass); padding: 0.5rem 1rem; border-radius: 5px; font-family: Orbitron;">${m.opponent?.efootballId || 'N/A'}</code>
+                                        <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent?.efootballId || ''}')">Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : '<p style="color: var(--gray);">No upcoming matches.</p>'}
                     </div>
-
-                    <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">My Tournaments</h3>
-                    ${tournaments?.length ? `
-                        <div class="card-grid">
-                            ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
-                        </div>
-                    ` : '<p style="color: var(--gray);">You haven\'t joined any tournaments yet.</p>'}
-
-                    <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Upcoming Matches</h3>
-                    ${safeUpcoming.length ? safeUpcoming.map(m => `
-                        <div class="tournament-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
-                                    <p style="color: var(--gray);">${m.tournament?.name || 'Unknown Tournament'}</p>
-                                </div>
-                                <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
-                            </div>
-                            <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
-                                <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <code style="background: var(--glass); padding: 0.5rem 1rem; border-radius: 5px; font-family: Orbitron;">${m.opponent?.efootballId || 'N/A'}</code>
-                                    <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent?.efootballId || ''}')">Copy</button>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('') : '<p style="color: var(--gray);">No upcoming matches.</p>'}
                 </div>
-            </div>
-        `;
-    } catch (error) {  
-        console.error('❌ Dashboard error details:', error);
-        mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard: ${error.message}</p></div>`;
-    }
-},
+            `;
+        } catch (error) {  
+            console.error('❌ Dashboard error details:', error);
+            mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard: ${error.message}</p></div>`;
+        }
+    },
 
     async leaderboard() {
         const mainContent = document.getElementById('mainContent');
@@ -550,32 +664,32 @@ const Pages = {
                                         </div>
                                         
                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player1.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
+                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player1?.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
                                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                                    <strong>${r.player1.user?.username || 'Player 1'}</strong>
-                                                    ${r.player1.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                    <strong>${r.player1?.user?.username || 'Player 1'}</strong>
+                                                    ${r.player1?.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
                                                 </div>
-                                                ${r.player1.submitted ? `
+                                                ${r.player1?.submitted ? `
                                                     <div style="font-family: Orbitron; font-size: 1.1rem;">
-                                                        ${r.player1.submission.score1} - ${r.player1.submission.score2}
+                                                        ${r.player1?.submission?.score1} - ${r.player1?.submission?.score2}
                                                     </div>
                                                     <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
-                                                        Winner: ${r.player1.submission.winner === 'player1' ? r.player1.user?.username : r.player2.user?.username}
+                                                        Winner: ${r.player1?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}
                                                     </div>
                                                 ` : '<span style="color: var(--gray);">Not submitted</span>'}
                                             </div>
 
-                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player2.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
+                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player2?.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
                                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                                    <strong>${r.player2.user?.username || 'Player 2'}</strong>
-                                                    ${r.player2.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                    <strong>${r.player2?.user?.username || 'Player 2'}</strong>
+                                                    ${r.player2?.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
                                                 </div>
-                                                ${r.player2.submitted ? `
+                                                ${r.player2?.submitted ? `
                                                     <div style="font-family: Orbitron; font-size: 1.1rem;">
-                                                        ${r.player2.submission.score1} - ${r.player2.submission.score2}
+                                                        ${r.player2?.submission?.score1} - ${r.player2?.submission?.score2}
                                                     </div>
                                                     <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
-                                                        Winner: ${r.player2.submission.winner === 'player1' ? r.player1.user?.username : r.player2.user?.username}
+                                                        Winner: ${r.player2?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}
                                                     </div>
                                                 ` : '<span style="color: var(--gray);">Not submitted</span>'}
                                             </div>
@@ -586,12 +700,12 @@ const Pages = {
                                                 <p style="color: var(--danger); margin-bottom: 0.75rem; font-weight: bold;">⚠️ Results do not match!</p>
                                                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                                     <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
-                                                        ✓ ${r.player1.user?.username} Correct
+                                                        ✓ ${r.player1?.user?.username} Correct
                                                     </button>
                                                     <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
-                                                        ✓ ${r.player2.user?.username} Correct
+                                                        ✓ ${r.player2?.user?.username} Correct
                                                     </button>
-                                                    <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1.user?.username}', '${r.player2.user?.username}')">
+                                                    <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
                                                         ⚖️ Custom
                                                     </button>
                                                 </div>
@@ -611,6 +725,180 @@ const Pages = {
         } catch (error) {
             mainContent.innerHTML = `<div class="empty-state"><p>Error loading admin panel</p></div>`;
         }
+    },
+
+    // NEW: Create Tournament with Format Selection
+    showCreateTournamentModal() {
+        const content = `
+            <div class="modal-header">
+                <h3>Create New Tournament</h3>
+                <button class="close-btn" onclick="UI.closeModal()">×</button>
+            </div>
+            <form id="createTournamentForm" style="padding: 1.5rem;">
+                ${UI.createFormGroup('Tournament Name', 'text', 'name', 'eFootball Championship')}
+                ${UI.createFormGroup('Description', 'text', 'description', 'Brief description')}
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Tournament Format</label>
+                    <select id="formatSelect" name="format" onchange="Pages.updateFormatSettings()" style="width: 100%; padding: 0.75rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px; font-size: 1rem;">
+                        <option value="single_elimination">⚔️ Single Elimination - Lose once = out</option>
+                        <option value="double_elimination">🛡️ Double Elimination - Two lives</option>
+                        <option value="round_robin">🔄 Round Robin - Everyone plays everyone</option>
+                        <option value="swiss">🇨🇭 Swiss System - Chess style</option>
+                        <option value="league">🏆 League - Season long</option>
+                    </select>
+                    <p id="formatDescription" style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">
+                        Fast tournament. Players eliminated after one loss.
+                    </p>
+                </div>
+
+                <div id="dynamicSettings" style="margin: 1rem 0; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                    <!-- Dynamic settings loaded here -->
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    ${UI.createFormGroup('Entry Fee (KES)', 'number', 'entryFee', '100')}
+                    ${UI.createFormGroup('Max Players', 'number', 'maxPlayers', '32')}
+                </div>
+                
+                ${UI.createFormGroup('Start Date', 'datetime-local', 'startDate')}
+                ${UI.createFormGroup('Admin Phone (M-Pesa)', 'tel', 'adminPhone', '2547XXXXXXXX')}
+                ${UI.createFormGroup('WhatsApp Group Link', 'url', 'whatsappLink', 'https://chat.whatsapp.com/...', false)}
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Tournament</button>
+            </form>
+        `;
+
+        const modal = UI.showModal(content);
+        Pages.updateFormatSettings(); // Initialize settings
+
+        document.getElementById('createTournamentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            const format = formData.get('format');
+            const settings = {
+                maxPlayers: parseInt(formData.get('maxPlayers')),
+                bestOf: parseInt(document.getElementById('bestOf')?.value) || 1,
+                bronzeMatch: document.getElementById('bronzeMatch')?.checked || false,
+                rounds: parseInt(document.getElementById('rounds')?.value) || 1,
+                pointsWin: parseInt(document.getElementById('pointsWin')?.value) || 3,
+                pointsDraw: parseInt(document.getElementById('pointsDraw')?.value) || 1,
+                pointsLoss: parseInt(document.getElementById('pointsLoss')?.value) || 0,
+                swissRounds: parseInt(document.getElementById('swissRounds')?.value) || 5
+            };
+
+            try {
+                UI.showLoading();
+                await API.createTournament({
+                    name: formData.get('name'),
+                    description: formData.get('description'),
+                    format: format,
+                    settings: settings,
+                    entryFee: parseInt(formData.get('entryFee')),
+                    startDate: formData.get('startDate'),
+                    adminPhone: formData.get('adminPhone'),
+                    whatsappLink: formData.get('whatsappLink')
+                });
+                UI.closeModal();
+                UI.showToast('Tournament created!', 'success');
+                Router.navigate('admin');
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+    },
+
+    updateFormatSettings() {
+        const format = document.getElementById('formatSelect').value;
+        const container = document.getElementById('dynamicSettings');
+        const description = document.getElementById('formatDescription');
+        const formatInfo = this.TOURNAMENT_FORMATS[format];
+
+        description.textContent = formatInfo.description;
+
+        const settingsHTML = {
+            single_elimination: `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Games per Match</label>
+                        <select id="bestOf" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                            <option value="1">1 game (Bo1)</option>
+                            <option value="3">3 games (Bo3)</option>
+                            <option value="5">5 games (Bo5)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin: 0; display: flex; align-items: center; padding-top: 1.5rem;">
+                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.9rem;">
+                            <input type="checkbox" id="bronzeMatch" style="margin-right: 0.5rem;">
+                            3rd Place Match
+                        </label>
+                    </div>
+                </div>
+            `,
+            double_elimination: `
+                <div class="form-group" style="margin: 0;">
+                    <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Games per Match</label>
+                    <select id="bestOf" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                        <option value="1">1 game (Bo1)</option>
+                        <option value="3">3 games (Bo3)</option>
+                        <option value="5">5 games (Bo5)</option>
+                    </select>
+                </div>
+            `,
+            round_robin: `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Times Each Pair Plays</label>
+                        <input type="number" id="rounds" min="1" max="4" value="1" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
+                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Draw</label>
+                        <input type="number" id="pointsDraw" value="1" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Loss</label>
+                        <input type="number" id="pointsLoss" value="0" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                </div>
+            `,
+            swiss: `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Number of Rounds</label>
+                        <input type="number" id="swissRounds" min="3" max="12" value="5" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                        <small style="color: var(--gray); font-size: 0.8rem;">Recommended: log₂(players) + 1</small>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
+                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                </div>
+            `,
+            league: `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Times Each Pair Plays</label>
+                        <input type="number" id="rounds" min="1" max="4" value="2" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                        <small style="color: var(--gray); font-size: 0.8rem;">Home & Away = 2</small>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
+                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    </div>
+                </div>
+            `
+        };
+
+        container.innerHTML = settingsHTML[format] || '';
     },
 
     async resolveMatch(matchId, decision) {
@@ -691,54 +979,6 @@ const Pages = {
         });
     },
 
-    showCreateTournamentModal() {
-        const content = `
-            <div class="modal-header">
-                <h3>Create New Tournament</h3>
-                <button class="close-btn" onclick="UI.closeModal()">×</button>
-            </div>
-            <form id="createTournamentForm">
-                ${UI.createFormGroup('Tournament Name', 'text', 'name', 'eFootball Championship')}
-                ${UI.createFormGroup('Description', 'text', 'description', 'Brief description')}
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    ${UI.createFormGroup('Entry Fee (KES)', 'number', 'entryFee', '100')}
-                    ${UI.createFormGroup('Max Players', 'number', 'maxPlayers', '32')}
-                </div>
-                ${UI.createFormGroup('Start Date', 'datetime-local', 'startDate')}
-                ${UI.createFormGroup('Admin Phone (M-Pesa)', 'tel', 'adminPhone', '2547XXXXXXXX')}
-                ${UI.createFormGroup('WhatsApp Group Link', 'url', 'whatsappLink', 'https://chat.whatsapp.com/...', false)}
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Tournament</button>
-            </form>
-        `;
-
-        const modal = UI.showModal(content);
-
-        document.getElementById('createTournamentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            try {
-                UI.showLoading();
-                await API.createTournament({
-                    name: formData.get('name'),
-                    description: formData.get('description'),
-                    entryFee: parseInt(formData.get('entryFee')),
-                    maxPlayers: parseInt(formData.get('maxPlayers')),
-                    startDate: formData.get('startDate'),
-                    adminPhone: formData.get('adminPhone'),
-                    whatsappLink: formData.get('whatsappLink')
-                });
-                UI.closeModal();
-                UI.showToast('Tournament created!', 'success');
-                Router.navigate('admin');
-            } catch (error) {
-                UI.showToast(error.message, 'error');
-            } finally {
-                UI.hideLoading();
-            }
-        });
-    },
-
     async verifyPayment(paymentId, action) {
         try {
             UI.showLoading();
@@ -770,16 +1010,15 @@ const Pages = {
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const efootballId = formData.get('efootballId');
-            const phoneNumber = formData.get('phoneNumber');
             
             try {
                 UI.showLoading();
-                await API.updateProfile({ efootballId, phoneNumber });
-                
+                await API.updateProfile({ 
+                    efootballId: formData.get('efootballId'),
+                    phoneNumber: formData.get('phoneNumber')
+                });
                 UI.showToast('Profile updated!', 'success');
                 this.profile();
-                
             } catch (error) {
                 UI.showToast(error.message, 'error');
             } finally {
