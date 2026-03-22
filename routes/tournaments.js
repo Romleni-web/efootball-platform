@@ -33,11 +33,13 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/tournaments/:id
+// GET /api/tournaments/:id - POPULATED WITH MATCHES
 router.get('/:id', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
-            .populate('registeredPlayers.user', 'username teamName efootballId');
+            .populate('registeredPlayers.user', 'username teamName efootballId')
+            .populate('matches'); // ADDED: Populate matches
+        
         if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
         res.json(tournament);
     } catch (error) {

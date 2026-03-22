@@ -162,6 +162,23 @@ router.get('/:id/status', auth, async (req, res) => {
     }
 });
 
+// GET /api/matches/:id - Get match details (ADDED)
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const match = await Match.findById(req.params.id)
+            .populate('tournament', 'name')
+            .populate('player1', 'username efootballId')
+            .populate('player2', 'username efootballId')
+            .populate('winner', 'username');
+        
+        if (!match) return res.status(404).json({ message: 'Match not found' });
+        
+        res.json(match);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 async function updatePlayerStats(match) {
     try {
         const winner = await User.findById(match.winner);
