@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const Payment = require('../models/Payment');
 const Tournament = require('../models/Tournament');
