@@ -30,7 +30,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
 
         console.log('Received submission:', { score1, score2, winner, userId });
 
-        const match = await Match.findById(req.params.id)
+        let match = await Match.findById(req.params.id)
             .populate('tournament', 'name')
             .populate('player1', 'username')
             .populate('player2', 'username');
@@ -46,7 +46,10 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
         }
 
         const playerKey = isPlayer1 ? 'player1' : 'player2';
-        if (match.submissions?.[playerKey]) {
+        
+        // Check if already submitted using $set check
+        const existingMatch = await Match.findById(req.params.id);
+        if (existingMatch.submissions?.[playerKey]) {
             return res.status(400).json({ message: 'You already submitted your result' });
         }
 
@@ -59,8 +62,8 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(400).json({ message: 'Winner does not match scores' });
         }
 
-        if (!match.submissions) match.submissions = {};
-        match.submissions[playerKey] = {
+        // FIXED: Use $set to properly save nested submission
+        const submissionData = {
             score1: parseInt(score1),
             score2: parseInt(score2),
             winner: winner,
@@ -69,38 +72,53 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             screenshotPath: req.file ? req.file.path : null
         };
 
-        // ADDED: Tell MongoDB the nested object changed
-        match.markModified('submissions');
+        await Match.findByIdAndUpdate(req.params.id, {
+            $set: {
+                [`submissions.${playerKey}`]: submissionData
+            }
+        });
 
-        await match.save();
+        // Reload match to get updated data
+        match = await Match.findById(req.params.id)
+            .populate('tournament', 'name')
+            .populate('player1', 'username')
+            .populate('player2', 'username');
 
         const bothSubmitted = match.submissions?.player1 && match.submissions?.player2;
         const submissionsMatch = bothSubmitted ? match.submissionsMatch() : false;
 
         if (bothSubmitted && submissionsMatch) {
-            match.score1 = match.submissions.player1.score1;
-            match.score2 = match.submissions.player1.score2;
-            match.winner = match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id;
-            match.status = 'completed';
-            match.adminVerification = {
-                status: 'approved',
-                verifiedAt: new Date(),
-                finalScore1: match.score1,
-                finalScore2: match.score2,
-                finalWinner: match.winner
-            };
-            await match.save();
+            // Auto-approve matching submissions
+            await Match.findByIdAndUpdate(req.params.id, {
+                $set: {
+                    score1: match.submissions.player1.score1,
+                    score2: match.submissions.player1.score2,
+                    winner: match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id,
+                    status: 'completed',
+                    'adminVerification.status': 'approved',
+                    'adminVerification.verifiedAt': new Date(),
+                    'adminVerification.finalScore1': match.submissions.player1.score1,
+                    'adminVerification.finalScore2': match.submissions.player1.score2,
+                    'adminVerification.finalWinner': match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id
+                }
+            });
 
-            if (match.nextMatch) {
-                const nextMatch = await Match.findById(match.nextMatch);
+            // Advance winner to next match
+            const updatedMatch = await Match.findById(req.params.id);
+            if (updatedMatch.nextMatch) {
+                const nextMatch = await Match.findById(updatedMatch.nextMatch);
                 if (nextMatch) {
-                    if (!nextMatch.player1) nextMatch.player1 = match.winner;
-                    else if (!nextMatch.player2) nextMatch.player2 = match.winner;
-                    await nextMatch.save();
+                    const updateData = {};
+                    if (!nextMatch.player1) updateData.player1 = updatedMatch.winner;
+                    else if (!nextMatch.player2) updateData.player2 = updatedMatch.winner;
+                    
+                    if (Object.keys(updateData).length > 0) {
+                        await Match.findByIdAndUpdate(updatedMatch.nextMatch, { $set: updateData });
+                    }
                 }
             }
 
-            await updatePlayerStats(match);
+            await updatePlayerStats(updatedMatch);
 
             return res.json({ 
                 success: true, 
@@ -111,9 +129,13 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
         }
 
         if (bothSubmitted && !submissionsMatch) {
-            match.status = 'disputed';
-            match.adminVerification = { status: 'disputed' };
-            await match.save();
+            // Mark as disputed
+            await Match.findByIdAndUpdate(req.params.id, {
+                $set: {
+                    status: 'disputed',
+                    'adminVerification.status': 'disputed'
+                }
+            });
 
             return res.json({ 
                 success: true, 
