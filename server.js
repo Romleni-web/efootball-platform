@@ -8,7 +8,6 @@ require('dotenv').config();
 const app = express();
 
 // Security middleware FIRST
-app.use(helmet());
 // CORS - restrict in production
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
