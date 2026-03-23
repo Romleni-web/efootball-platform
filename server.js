@@ -1,43 +1,68 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// Debug: Log environment variables (remove in production)
-console.log('=== ENVIRONMENT CHECK ===');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT);
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-console.log('========================');
+// Security middleware FIRST
+app.use(helmet());
 
-// Middleware
-app.use(cors({
-    origin: '*',  // Allow all origins (for testing)
+// CORS - restrict in production
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+        ? (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'])
+        : '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+};
+app.use(cors(corsOptions));
+
+// Body parsing with limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
 
 // Health check
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.status(200).json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        dbState: mongoose.connection.readyState 
+    });
 });
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/tournaments', require('./routes/tournaments'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/matches', require('./routes/matches'));
-app.use('/api/admin', require('./routes/admin'));
+// Load routes with error handling
+const routes = [
+    { path: '/api/auth', module: './routes/auth' },
+    { path: '/api/users', module: './routes/users' },
+    { path: '/api/tournaments', module: './routes/tournaments' },
+    { path: '/api/payments', module: './routes/payments' },
+    { path: '/api/matches', module: './routes/matches' },
+    { path: '/api/admin', module: './routes/admin' }
+];
 
-// Serve frontend
+for (const route of routes) {
+    try {
+        app.use(route.path, require(route.module));
+        console.log(`✅ Loaded route: ${route.path}`);
+    } catch (err) {
+        console.error(`❌ Failed to load ${route.path}:`, err.message);
+        process.exit(1);
+    }
+}
+
+// Static files
 app.use(express.static(path.join(__dirname, 'frontend')));
+
+// SPA catch-all (must be AFTER API routes)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
@@ -45,38 +70,48 @@ app.get('*', (req, res) => {
 // Error handling
 app.use((err, req, res, next) => {
     console.error('Error:', err.stack);
-    res.status(500).json({ message: err.message || 'Something went wrong!' });
+    res.status(err.status || 500).json({ 
+        message: process.env.NODE_ENV === 'production' 
+            ? 'Something went wrong!' 
+            : err.message 
+    });
 });
 
 const PORT = process.env.PORT || 10000;
 
-// Check if MONGODB_URI exists
-if (!process.env.MONGODB_URI) {
-    console.error('❌ FATAL: MONGODB_URI environment variable is missing!');
-    console.error('Please set it in Render Dashboard → Environment');
+// Validate env vars
+const requiredEnv = ['MONGODB_URI', 'JWT_SECRET'];
+const missing = requiredEnv.filter(e => !process.env[e]);
+if (missing.length > 0) {
+    console.error('❌ Missing required env vars:', missing.join(', '));
     process.exit(1);
 }
 
-// Connect to MongoDB with better error handling
+// MongoDB connection with event handlers
 mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000, // Timeout after 5s
+    serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
 })
 .then(() => {
-    console.log('✅ MongoDB Connected successfully');
+    console.log('✅ MongoDB Connected');
+    
+    // Connection event handlers
+    mongoose.connection.on('error', (err) => {
+        console.error('MongoDB error:', err);
+    });
+    mongoose.connection.on('disconnected', () => {
+        console.warn('⚠️ MongoDB disconnected');
+    });
+    
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
     });
 })
 .catch(err => {
-    console.error('❌ MongoDB Connection Error:', err.message);
-    console.error('Full error:', err);
+    console.error('❌ MongoDB Connection Failed:', err.message);
     process.exit(1);
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err);
     process.exit(1);

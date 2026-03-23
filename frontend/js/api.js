@@ -142,34 +142,33 @@ const API = {
     },
 
     // FIXED: Submit match result - now includes tournamentId in URL
+      // api.js - FIXED
     async submitMatchResult(tournamentId, matchId, resultData) {
-        const formData = new FormData();
-        formData.append('score1', resultData.score1);
-        formData.append('score2', resultData.score2);
-        formData.append('winner', resultData.winner);
-        
-        if (resultData.notes) {
-            formData.append('notes', resultData.notes);
-        }
-        if (resultData.screenshot && resultData.screenshot.size > 0) {
-            formData.append('screenshot', resultData.screenshot);
-        }
+    const formData = new FormData();
+    formData.append('score1', resultData.score1);
+    formData.append('score2', resultData.score2);
+    formData.append('winner', resultData.winner);
+    
+    if (resultData.notes) {
+        formData.append('notes', resultData.notes);
+    }
+    if (resultData.screenshot && resultData.screenshot.size > 0) {
+        formData.append('screenshot', resultData.screenshot);
+    }
 
-        // IMPORTANT: Don't set Content-Type, let browser set it with boundary
-        const token = localStorage.getItem('token');
-        
-        // ✅ FIXED URL: Now includes tournamentId
-        const response = await fetch(`${API_BASE_URL}/tournaments/${tournamentId}/matches/${matchId}/result`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
-        });
+    const token = Auth.getToken();
+    
+    // FIXED: Use /matches/ endpoint (has upload middleware)
+    const response = await fetch(`${API_BASE_URL}/matches/${matchId}/result`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: formData
+    });
 
-        return this.handleResponse(response);
+    return this.handleResponse(response);
     },
-
     // ============================================
     // ADMIN - MATCH VERIFICATION
     // ============================================

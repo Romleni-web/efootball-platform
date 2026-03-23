@@ -509,7 +509,7 @@ const Pages = {
                                         <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
                                         <p style="color: var(--gray);">${m.tournament?.name || 'Unknown Tournament'}</p>
                                     </div>
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
+                                   <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
                                 </div>
                                 <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
                                     <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
