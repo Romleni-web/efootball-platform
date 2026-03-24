@@ -126,6 +126,8 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 ? match.player1._id 
                 : match.player2._id;
 
+            console.log('Auto-approving match. Winner ID:', winnerId?.toString());
+
             await Match.findByIdAndUpdate(req.params.id, {
                 $set: {
                     score1: match.submissions.player1.score1,
@@ -140,55 +142,84 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 }
             });
 
-            // ✅ FIXED: Advance winner to next match with better logging
+            // ✅ FIXED: Advance winner to next match
             console.log('=== Starting winner advancement ===');
-            const updatedMatch = await Match.findById(req.params.id);
-            console.log('Match winner:', updatedMatch.winner?.toString());
-            console.log('Next match ID:', updatedMatch.nextMatch?.toString());
+            
+            // Get fresh match data with populated fields
+            const completedMatch = await Match.findById(req.params.id)
+                .populate('player1')
+                .populate('player2');
+                
+            console.log('Completed match:', {
+                id: completedMatch._id.toString(),
+                winner: completedMatch.winner?.toString(),
+                nextMatch: completedMatch.nextMatch?.toString(),
+                player1: completedMatch.player1?._id?.toString(),
+                player2: completedMatch.player2?._id?.toString()
+            });
 
-            if (updatedMatch.nextMatch) {
-                const nextMatch = await Match.findById(updatedMatch.nextMatch);
-                console.log('Next match found:', !!nextMatch);
+            if (completedMatch.nextMatch) {
+                const nextMatch = await Match.findById(completedMatch.nextMatch);
+                console.log('Next match lookup result:', nextMatch ? 'FOUND' : 'NOT FOUND');
                 
                 if (nextMatch) {
-                    console.log('Next match current players:', {
-                        player1: nextMatch.player1?.toString() || 'empty',
-                        player2: nextMatch.player2?.toString() || 'empty'
+                    console.log('Next match current state:', {
+                        id: nextMatch._id.toString(),
+                        player1: nextMatch.player1?.toString() || 'EMPTY',
+                        player2: nextMatch.player2?.toString() || 'EMPTY',
+                        round: nextMatch.round,
+                        matchNumber: nextMatch.matchNumber
                     });
                     
+                    // Determine which slot to fill
+                    let slotFilled = null;
                     const updateData = {};
-                    const winnerObjectId = updatedMatch.winner; // Keep as ObjectId
                     
-                    if (!nextMatch.player1) {
-                        updateData.player1 = winnerObjectId;
-                        console.log('Will set player1 to winner:', winnerObjectId.toString());
-                    } else if (!nextMatch.player2) {
-                        updateData.player2 = winnerObjectId;
-                        console.log('Will set player2 to winner:', winnerObjectId.toString());
+                    // Check if player1 slot is empty (null or undefined)
+                    const player1Empty = !nextMatch.player1;
+                    const player2Empty = !nextMatch.player2;
+                    
+                    console.log('Slot availability:', { player1Empty, player2Empty });
+                    
+                    if (player1Empty) {
+                        updateData.player1 = completedMatch.winner;
+                        slotFilled = 'player1';
+                        console.log('✅ Will fill player1 slot with winner:', completedMatch.winner.toString());
+                    } else if (player2Empty) {
+                        updateData.player2 = completedMatch.winner;
+                        slotFilled = 'player2';
+                        console.log('✅ Will fill player2 slot with winner:', completedMatch.winner.toString());
                     } else {
-                        console.log('⚠️ Next match already has both players!');
+                        console.log('⚠️ Both slots already filled! Cannot advance winner.');
                     }
                     
-                    if (Object.keys(updateData).length > 0) {
-                        console.log('Updating next match with:', updateData);
-                        await Match.findByIdAndUpdate(updatedMatch.nextMatch, { $set: updateData });
-                        console.log('✅ Next match updated successfully');
+                    if (slotFilled) {
+                        console.log('Executing update with data:', updateData);
                         
-                        // Verify the update
-                        const verifyNextMatch = await Match.findById(updatedMatch.nextMatch);
-                        console.log('Verified next match players:', {
-                            player1: verifyNextMatch.player1?.toString(),
-                            player2: verifyNextMatch.player2?.toString()
-                        });
+                        const updateResult = await Match.findByIdAndUpdate(
+                            completedMatch.nextMatch, 
+                            { $set: updateData },
+                            { new: true } // Return updated document
+                        );
+                        
+                        console.log('Update result:', updateResult ? 'SUCCESS' : 'FAILED');
+                        
+                        if (updateResult) {
+                            console.log('✅ Winner advanced successfully to', slotFilled);
+                            console.log('Next match now has:', {
+                                player1: updateResult.player1?.toString(),
+                                player2: updateResult.player2?.toString()
+                            });
+                        }
                     }
                 } else {
-                    console.log('❌ Next match not found in database!');
+                    console.log('❌ Next match not found in database! ID:', completedMatch.nextMatch.toString());
                 }
             } else {
-                console.log('ℹ️ No nextMatch field - this is the final match');
+                console.log('ℹ️ No nextMatch field - this is the final match, no advancement needed');
             }
 
-            await updatePlayerStats(updatedMatch);
+            await updatePlayerStats(completedMatch);
 
             return res.json({ 
                 success: true, 
@@ -249,9 +280,7 @@ router.get('/:id/status', auth, async (req, res) => {
             opponentSubmitted: isPlayer1 ? !!match.submissions?.player2?.submittedAt : !!match.submissions?.player1?.submittedAt,
             bothSubmitted: !!(match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt),
             submissionsMatch: match.submissions?.player1 && match.submissions?.player2 ?
-                (match.submissions.player1.score1 === match.submissions.player2.score1 &&
-                 match.submissions.player1.score2 === match.submissions.player2.score2 &&
-                 match.submissions.player1.winner === match.submissions.player2.winner) : null
+                match.submissionsMatch() : null
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });

@@ -1,3 +1,5 @@
+// models/Match.js - Fixed version
+
 const mongoose = require('mongoose');
 
 const matchSchema = new mongoose.Schema({
@@ -48,26 +50,24 @@ const matchSchema = new mongoose.Schema({
         ref: 'Match',
         default: null
     },
-    // NEW: Dual submission system
     submissions: {
         player1: {
-            score1: Number,
-            score2: Number,
-            winner: String,
+            score1: Number,  // P1's score
+            score2: Number,  // P2's score
+            winner: String,   // 'player1' or 'player2' - who won from P1's view
             notes: String,
             submittedAt: Date,
             screenshotPath: String
         },
         player2: {
-            score1: Number,
-            score2: Number,
-            winner: String,
+            score1: Number,  // P2's score (their own score)
+            score2: Number,  // P1's score (opponent's score from P2's view)
+            winner: String,   // 'player1' or 'player2' - who won from P2's view
             notes: String,
             submittedAt: Date,
             screenshotPath: String
         }
     },
-    // Admin verification
     adminVerification: {
         status: {
             type: String,
@@ -89,24 +89,33 @@ const matchSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true,
-    minimize: false // ✅ FIXED: Prevents Mongoose from removing empty objects
+    minimize: false
 });
 
-// Helper method to check if submissions match
+// ✅ FIXED: Check if submissions describe the same match result
 matchSchema.methods.submissionsMatch = function() {
     const s1 = this.submissions?.player1;
     const s2 = this.submissions?.player2;
     
     if (!s1 || !s2) return false;
     
-    return s1.score1 === s2.score1 && 
-           s1.score2 === s2.score2 && 
-           s1.winner === s2.winner;
+    // Both players submit from their own perspective:
+    // P1: score1=myScore, score2=opponentScore, winner=whoWonFromMyView
+    // P2: score1=myScore, score2=opponentScore, winner=whoWonFromMyView
+    
+    // For consistency: P1's score should equal P2's opponent score, and vice versa
+    const scoresConsistent = s1.score1 === s2.score2 && s1.score2 === s2.score1;
+    
+    // Winner should be opposite (if P1 says 'player1', P2 should say 'player2')
+    // Because 'player1' from P1's view = 'player2' from P2's view (same actual person)
+    const winnerConsistent = s1.winner !== s2.winner;
+    
+    return scoresConsistent && winnerConsistent;
 };
 
 // Helper to check if both submitted
 matchSchema.methods.bothSubmitted = function() {
-    return this.submissions?.player1 && this.submissions?.player2;
+    return !!(this.submissions?.player1?.submittedAt && this.submissions?.player2?.submittedAt);
 };
 
 module.exports = mongoose.model('Match', matchSchema);
