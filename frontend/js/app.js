@@ -4,6 +4,8 @@ const Router = {
     routes: {
         home: () => Pages.home(),
         login: () => Pages.login(),
+        forgot: () => Pages.forgotPassword(),
+        'reset-password': () => Pages.resetPassword(),
         register: () => Pages.register(),
         tournaments: () => Pages.tournaments(),
         tournament: (id) => Pages.tournamentDetail(id),
@@ -83,8 +85,54 @@ const Pages = {
         }
     },
 
-    home() {
+    async home() {
         const mainContent = document.getElementById('mainContent');
+        mainContent.innerHTML = '<div class="spinner"></div>';
+
+        let liveTournamentHtml = `
+            <div class="empty-state">
+                <p>No live tournament right now.</p>
+                <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Check upcoming competitions in the tournaments page.</p>
+            </div>
+        `;
+
+        try {
+            const tournaments = await API.getTournaments();
+            const ongoing = tournaments.find(t => t.status === 'ongoing');
+            const fallbackOpen = tournaments.find(t => t.status === 'open');
+            const liveTournament = ongoing || fallbackOpen || null;
+
+            if (liveTournament) {
+                const statusLabel = ongoing ? 'Live Now' : 'Starting Soon';
+                liveTournamentHtml = `
+                    <div class="live-tournament-card">
+                        <div class="live-tournament-header">
+                            <h3>${liveTournament.name}</h3>
+                            <span class="tournament-status status-${liveTournament.status}">${statusLabel}</span>
+                        </div>
+                        <p style="color: var(--gray); margin: 0.5rem 0 1rem;">
+                            ${liveTournament.description || 'Join the action and compete for the top spot.'}
+                        </p>
+                        <div class="live-tournament-meta">
+                            <span>💰 ${UI.formatCurrency(liveTournament.entryFee || 0)} entry</span>
+                            <span>🏆 ${UI.formatCurrency(liveTournament.prizePool || 0)} prize</span>
+                            <span>👥 ${(liveTournament.registeredPlayers || []).length} players</span>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="Router.navigate('tournament/${liveTournament._id}')">View Tournament</button>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            liveTournamentHtml = `
+                <div class="empty-state">
+                    <p>Could not load live tournament.</p>
+                    <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Try refreshing the page.</p>
+                </div>
+            `;
+        }
+
         mainContent.innerHTML = `
             <section class="hero">
                 <h1>COMPETE. WIN. EARN.</h1>
@@ -93,6 +141,11 @@ const Pages = {
                     <button class="btn btn-primary" onclick="Router.navigate('tournaments')">Browse Tournaments</button>
                     ${!Auth.isAuthenticated() ? `<button class="btn btn-secondary" onclick="Router.navigate('register')">Create Account</button>` : ''}
                 </div>
+            </section>
+
+            <section class="live-tournament-section">
+                <h2 style="font-family: Orbitron; text-align: center; margin-bottom: 1.5rem; color: var(--primary);">Live Tournament</h2>
+                ${liveTournamentHtml}
             </section>
             
             <section style="margin-top: 4rem;">
@@ -131,6 +184,9 @@ const Pages = {
                 <form id="loginForm">
                     ${UI.createFormGroup('Email', 'email', 'email', 'your@email.com')}
                     ${UI.createFormGroup('Password', 'password', 'password', '••••••••')}
+                    <p style="text-align: right; margin-top: -0.5rem; margin-bottom: 1rem;">
+                        <a href="#" onclick="Router.navigate('forgot')" style="color: var(--primary); font-size: 0.9rem;">Forgot password?</a>
+                    </p>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
                 </form>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
@@ -152,6 +208,99 @@ const Pages = {
                 Auth.setAuth(data.token, data.user);
                 UI.showToast('Welcome back!', 'success');
                 Router.navigate('dashboard');
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+    },
+
+    forgotPassword() {
+        const mainContent = document.getElementById('mainContent');
+        mainContent.innerHTML = `
+            <div class="form-container fade-in">
+                <h2>Forgot Password</h2>
+                <p style="color: var(--gray); margin-bottom: 1rem; text-align: center;">
+                    Enter your account email and we will generate a reset link.
+                </p>
+                <form id="forgotPasswordForm">
+                    ${UI.createFormGroup('Email', 'email', 'email', 'your@email.com')}
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Generate Reset Link</button>
+                </form>
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                    Remembered your password? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
+                </p>
+                <div id="resetLinkContainer" style="display: none; margin-top: 1rem; padding: 0.8rem; background: var(--dark); border-radius: 10px;">
+                    <small style="color: var(--gray);">Reset link:</small>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input id="resetLinkField" readonly style="width: 100%; padding: 0.6rem; background: var(--glass); border: 1px solid var(--glass-border); color: var(--light); border-radius: 6px;">
+                        <button type="button" class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('resetLinkField').value)">Copy</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                UI.showLoading();
+                const result = await API.forgotPassword(formData.get('email'));
+                UI.showToast(result.message || 'Reset link generated', 'success');
+                if (result.resetLink) {
+                    document.getElementById('resetLinkField').value = result.resetLink;
+                    document.getElementById('resetLinkContainer').style.display = 'block';
+                }
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+    },
+
+    resetPassword() {
+        const mainContent = document.getElementById('mainContent');
+        const token = new URLSearchParams(window.location.search).get('token') || '';
+
+        mainContent.innerHTML = `
+            <div class="form-container fade-in">
+                <h2>Reset Password</h2>
+                <form id="resetPasswordForm">
+                    ${UI.createFormGroup('Reset Token', 'text', 'token', 'Paste reset token')}
+                    ${UI.createFormGroup('New Password', 'password', 'password', '••••••••')}
+                    ${UI.createFormGroup('Confirm Password', 'password', 'confirmPassword', '••••••••')}
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Reset Password</button>
+                </form>
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                    Back to <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
+                </p>
+            </div>
+        `;
+
+        if (token) {
+            const tokenField = document.getElementById('token');
+            if (tokenField) tokenField.value = token;
+        }
+
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const tokenValue = formData.get('token');
+            const password = formData.get('password');
+            const confirmPassword = formData.get('confirmPassword');
+
+            if (password !== confirmPassword) {
+                UI.showToast('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                UI.showLoading();
+                const result = await API.resetPassword(tokenValue, password);
+                UI.showToast(result.message || 'Password reset successful', 'success');
+                Router.navigate('login');
             } catch (error) {
                 UI.showToast(error.message, 'error');
             } finally {
@@ -1137,5 +1286,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     await Auth.init();
-    Router.navigate('home');
+    const pageFromQuery = new URLSearchParams(window.location.search).get('page');
+    if (pageFromQuery && Router.routes[pageFromQuery]) {
+        Router.navigate(pageFromQuery);
+    } else {
+        Router.navigate('home');
+    }
 });

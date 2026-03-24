@@ -42,7 +42,7 @@ const matchSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['scheduled', 'ongoing', 'completed', 'disputed'],
+        enum: ['pending', 'scheduled', 'ongoing', 'completed', 'disputed', 'bye'],
         default: 'scheduled'
     },
     nextMatch: {

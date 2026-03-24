@@ -242,12 +242,10 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
 
         // Check if both players submitted
         if (match.submissions.player1 && match.submissions.player2) {
-            const s1 = match.submissions.player1;
-            const s2 = match.submissions.player2;
-
-            if (s1.score1 === s2.score1 && s1.score2 === s2.score2 && s1.winner === s2.winner) {
+            if (typeof match.submissionsMatch === 'function' && match.submissionsMatch()) {
                 // Auto-approve
                 match.status = 'completed';
+                const s1 = match.submissions.player1;
                 match.score1 = s1.score1;
                 match.score2 = s1.score2;
                 match.winner = s1.winner === 'player1' ? match.player1 : match.player2;
@@ -255,6 +253,8 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
                 const logic = TournamentLogicFactory.create(tournament);
                 
                 if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
+                    const completedMatches = await Match.find({ tournament: tournament._id });
+                    tournament.matches = completedMatches;
                     tournament.standings = logic.calculateStandings();
                 } else {
                     const nextMatch = await logic.advanceWinner(match);

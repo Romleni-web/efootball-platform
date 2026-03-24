@@ -17,6 +17,7 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
+app.use(helmet());
 
 // Body parsing with limits
 app.use(express.json({ limit: '10mb' }));

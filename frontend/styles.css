@@ -163,6 +163,40 @@ body::before {
     flex-wrap: wrap;
 }
 
+.live-tournament-section {
+    margin-top: 2rem;
+}
+
+.live-tournament-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+.live-tournament-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.live-tournament-header h3 {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--light);
+}
+
+.live-tournament-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    color: var(--gray);
+    font-size: 0.95rem;
+}
+
 /* Buttons */
 .btn {
     padding: 0.8rem 2rem;

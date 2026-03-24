@@ -39,6 +39,24 @@ const API = {
         return this.authenticatedRequest('/auth/me');
     },
 
+    async forgotPassword(email) {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        return this.handleResponse(response);
+    },
+
+    async resetPassword(token, password) {
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, password })
+        });
+        return this.handleResponse(response);
+    },
+
     // Tournaments
     async getTournaments() {
         const response = await fetch(`${API_BASE_URL}/tournaments`);

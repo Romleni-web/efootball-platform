@@ -52,6 +52,14 @@ const userSchema = new mongoose.Schema({
     losses: {
         type: Number,
         default: 0
+    },
+    resetPasswordToken: {
+        type: String,
+        default: null
+    },
+    resetPasswordExpires: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

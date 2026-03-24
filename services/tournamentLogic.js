@@ -512,7 +512,33 @@ class DoubleEliminationLogic extends TournamentLogic {
     }
 
     async advanceWinner(match) {
-        // Complex double elimination logic - simplified version
+        if (!match.winner) return null;
+
+        // Keep tournament progress moving by at least advancing the winners bracket.
+        // This avoids tournaments getting stuck while full losers-bracket logic is pending.
+        if (match.bracket === 'winners' || !match.bracket) {
+            const winnersMatches = this.tournament.matches.filter(m => m.bracket === 'winners');
+            const winnersTournamentView = {
+                ...this.tournament,
+                matches: winnersMatches,
+                settings: { ...this.tournament.settings, bronzeMatch: false }
+            };
+            const winnersLogic = new SingleEliminationLogic(winnersTournamentView);
+            const nextWinnersMatch = await winnersLogic.advanceWinner(match);
+            if (nextWinnersMatch) return nextWinnersMatch;
+
+            // Winners bracket final completed -> seed grand finals player1.
+            const grandFinal = this.tournament.matches.find(m => m.bracket === 'grand_finals');
+            if (grandFinal && !grandFinal.player1) {
+                grandFinal.player1 = match.winner;
+                if (grandFinal.player1 && grandFinal.player2) {
+                    grandFinal.status = 'scheduled';
+                }
+                return grandFinal;
+            }
+        }
+
+        // TODO: full losers bracket routing.
         return null;
     }
 }

@@ -306,35 +306,37 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// DEBUG: Check match submissions state
-router.get('/:id/debug', auth, async (req, res) => {
-    try {
-        const match = await Match.findById(req.params.id).lean();
-        if (!match) return res.status(404).json({ message: 'Match not found' });
-        
-        const userId = req.userId;
-        
-        res.json({
-            matchId: match._id.toString(),
-            status: match.status,
-            player1: match.player1?.toString(),
-            player2: match.player2?.toString(),
-            winner: match.winner?.toString(),
-            nextMatch: match.nextMatch?.toString(),
-            currentUser: userId,
-            isPlayer1: match.player1?.toString() === userId,
-            isPlayer2: match.player2?.toString() === userId,
-            hasSubmissionsField: 'submissions' in match,
-            submissions: match.submissions || null,
-            player1HasSubmitted: !!(match.submissions?.player1?.submittedAt),
-            player2HasSubmitted: !!(match.submissions?.player2?.submittedAt),
-            player1SubmissionData: match.submissions?.player1 || null,
-            player2SubmissionData: match.submissions?.player2 || null
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+// DEBUG: Check match submissions state (development only)
+if (process.env.NODE_ENV !== 'production') {
+    router.get('/:id/debug', auth, async (req, res) => {
+        try {
+            const match = await Match.findById(req.params.id).lean();
+            if (!match) return res.status(404).json({ message: 'Match not found' });
+            
+            const userId = req.userId;
+            
+            res.json({
+                matchId: match._id.toString(),
+                status: match.status,
+                player1: match.player1?.toString(),
+                player2: match.player2?.toString(),
+                winner: match.winner?.toString(),
+                nextMatch: match.nextMatch?.toString(),
+                currentUser: userId,
+                isPlayer1: match.player1?.toString() === userId,
+                isPlayer2: match.player2?.toString() === userId,
+                hasSubmissionsField: 'submissions' in match,
+                submissions: match.submissions || null,
+                player1HasSubmitted: !!(match.submissions?.player1?.submittedAt),
+                player2HasSubmitted: !!(match.submissions?.player2?.submittedAt),
+                player1SubmissionData: match.submissions?.player1 || null,
+                player2SubmissionData: match.submissions?.player2 || null
+            });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    });
+}
 
 async function updatePlayerStats(match) {
     try {

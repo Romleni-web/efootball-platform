@@ -44,7 +44,7 @@ router.get('/stats', auth, adminOnly, async (req, res) => {
         
         // Calculate total revenue from approved payments
         const revenueResult = await Payment.aggregate([
-            { $match: { status: 'approved' } },
+            { $match: { status: { $in: ['verified', 'approved'] }, type: 'entry' } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
         const totalRevenue = revenueResult[0]?.total || 0;
@@ -376,9 +376,9 @@ router.post('/send-prize', auth, adminOnly, async (req, res) => {
             amount,
             mpesaNumber,
             transactionCode,
-            status: 'approved',
-            approvedBy: req.user.id,
-            approvedAt: new Date()
+            status: 'verified',
+            verifiedBy: req.user.id,
+            verifiedAt: new Date()
         });
 
         await payment.save();
