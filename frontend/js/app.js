@@ -863,7 +863,7 @@ const Pages = {
             const players = await API.getLeaderboard();
             mainContent.innerHTML = `
                 <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">🏆 Global Leaderboard</h2>
-                <div class="leaderboard-table">
+                <div class="leaderboard-table responsive-leaderboard">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background: rgba(255,255,255,0.05);">
@@ -881,22 +881,22 @@ const Pages = {
                         <tbody>
                             ${players.map((p, idx) => `
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${idx < 3 ? `background: ${idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${p._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important;' : ''}">
-                                    <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
+                                    <td data-label="Rank" style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
                                         ${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : p.rank}
                                     </td>
-                                    <td style="padding: 0.75rem;">
+                                    <td data-label="Player" style="padding: 0.75rem;">
                                         <strong style="color: var(--light); font-size: 1.05rem;">${p.username}</strong>
                                         ${p.teamName ? `<br><small style="color: var(--gray);">${p.teamName}</small>` : ''}
                                         ${p.efootballId ? `<br><small style="color: var(--primary); font-family: Orbitron;">ID: ${p.efootballId}</small>` : ''}
                                         ${p._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
                                     </td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
-                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
-                                    <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
+                                    <td data-label="Played" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
+                                    <td data-label="Wins" style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
+                                    <td data-label="Losses" style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
+                                    <td data-label="Win%" style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
+                                    <td data-label="GF" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
+                                    <td data-label="GA" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
+                                    <td data-label="Points" style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
                                         ${p.points}
                                     </td>
                                 </tr>

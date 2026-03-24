@@ -787,6 +787,49 @@ body::before {
     .bracket {
         flex-direction: column;
     }
+
+    .responsive-leaderboard table,
+    .responsive-leaderboard thead,
+    .responsive-leaderboard tbody,
+    .responsive-leaderboard th,
+    .responsive-leaderboard td,
+    .responsive-leaderboard tr {
+        display: block;
+        width: 100%;
+    }
+
+    .responsive-leaderboard thead {
+        display: none;
+    }
+
+    .responsive-leaderboard tbody tr {
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .responsive-leaderboard td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: right !important;
+        padding: 0.6rem 0.25rem !important;
+        font-size: 0.9rem;
+    }
+
+    .responsive-leaderboard td:last-child {
+        border-bottom: none;
+    }
+
+    .responsive-leaderboard td::before {
+        content: attr(data-label);
+        float: left;
+        color: var(--gray);
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
 }
 
 /* Animations */
