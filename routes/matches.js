@@ -16,7 +16,7 @@ const auth = async (req, res, next) => {
         if (!user) return res.status(401).json({ message: 'Invalid token' });
         
         req.user = user;
-        req.userId = user._id.toString(); // ✅ FIXED: Set consistent userId
+        req.userId = user._id.toString();
         next();
     } catch (error) {
         res.status(401).json({ message: 'Token is not valid' });
@@ -27,7 +27,7 @@ const auth = async (req, res, next) => {
 router.post('/:id/result', auth, require('../middleware/upload').single('screenshot'), async (req, res) => {
     try {
         const { score1, score2, winner, notes } = req.body;
-        const userId = req.userId; // ✅ FIXED: Use req.userId instead of req.user.id
+        const userId = req.userId;
 
         console.log('Received submission:', { score1, score2, winner, userId });
 
@@ -39,7 +39,6 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
         if (!match) return res.status(404).json({ message: 'Match not found' });
         if (match.status === 'completed') return res.status(400).json({ message: 'Match already completed' });
 
-        // ✅ FIXED: Consistent string comparison
         const matchPlayer1Id = match.player1?._id?.toString();
         const matchPlayer2Id = match.player2?._id?.toString();
         
@@ -53,33 +52,24 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
-        // ✅ FORCE INITIALIZE: Ensure submissions object exists for old matches
-        if (!match.submissions) {
-            console.log('Initializing submissions object for match:', match._id);
-            await Match.findByIdAndUpdate(req.params.id, {
-                $set: { submissions: {} }
-            });
-            // Reload to get the updated document
-            match = await Match.findById(req.params.id)
-                .populate('tournament', 'name')
-                .populate('player1', 'username')
-                .populate('player2', 'username');
-            console.log('After init, match.submissions:', match.submissions);
-        }
+        // ✅ FIXED: Check if submission has actual data (not just empty object)
+        const player1HasSubmitted = match.submissions?.player1?.submittedAt != null;
+        const player2HasSubmitted = match.submissions?.player2?.submittedAt != null;
 
-        // ✅ FIXED: Check submission using the populated match object
         console.log('Checking submissions:', {
             isPlayer1,
             isPlayer2,
-            player1Submission: match.submissions?.player1,
-            player2Submission: match.submissions?.player2
+            player1HasSubmitted,
+            player2HasSubmitted,
+            player1Data: match.submissions?.player1,
+            player2Data: match.submissions?.player2
         });
 
-        if (isPlayer1 && match.submissions?.player1) {
+        if (isPlayer1 && player1HasSubmitted) {
             console.log('Player 1 already submitted');
             return res.status(400).json({ message: 'You already submitted your result' });
         }
-        if (isPlayer2 && match.submissions?.player2) {
+        if (isPlayer2 && player2HasSubmitted) {
             console.log('Player 2 already submitted');
             return res.status(400).json({ message: 'You already submitted your result' });
         }
@@ -122,7 +112,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
 
         console.log('After save, match.submissions:', match.submissions);
 
-        const bothSubmitted = match.submissions?.player1 && match.submissions?.player2;
+        const bothSubmitted = match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt;
         
         // Use the schema method to check if submissions match
         const submissionsMatch = bothSubmitted ? match.submissionsMatch() : false;
@@ -212,9 +202,8 @@ router.get('/:id/status', auth, async (req, res) => {
 
         if (!match) return res.status(404).json({ message: 'Match not found' });
 
-        const userId = req.userId; // ✅ FIXED: Use req.userId
+        const userId = req.userId;
 
-        // ✅ FIXED: Consistent string comparison
         const isPlayer1 = match.player1?._id?.toString() === userId;
 
         res.json({
@@ -224,8 +213,8 @@ router.get('/:id/status', auth, async (req, res) => {
             player2: match.player2,
             round: match.round,
             mySubmission: isPlayer1 ? match.submissions?.player1 : match.submissions?.player2,
-            opponentSubmitted: isPlayer1 ? !!match.submissions?.player2 : !!match.submissions?.player1,
-            bothSubmitted: !!(match.submissions?.player1 && match.submissions?.player2),
+            opponentSubmitted: isPlayer1 ? !!match.submissions?.player2?.submittedAt : !!match.submissions?.player1?.submittedAt,
+            bothSubmitted: !!(match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt),
             submissionsMatch: match.submissions?.player1 && match.submissions?.player2 ?
                 (match.submissions.player1.score1 === match.submissions.player2.score1 &&
                  match.submissions.player1.score2 === match.submissions.player2.score2 &&
@@ -259,7 +248,7 @@ router.get('/:id/debug', auth, async (req, res) => {
         const match = await Match.findById(req.params.id).lean();
         if (!match) return res.status(404).json({ message: 'Match not found' });
         
-        const userId = req.userId; // ✅ FIXED: Use req.userId
+        const userId = req.userId;
         
         res.json({
             matchId: match._id.toString(),
@@ -271,8 +260,8 @@ router.get('/:id/debug', auth, async (req, res) => {
             isPlayer2: match.player2?.toString() === userId,
             hasSubmissionsField: 'submissions' in match,
             submissions: match.submissions || null,
-            player1HasSubmission: !!(match.submissions?.player1),
-            player2HasSubmission: !!(match.submissions?.player2),
+            player1HasSubmitted: !!(match.submissions?.player1?.submittedAt),
+            player2HasSubmitted: !!(match.submissions?.player2?.submittedAt),
             player1SubmissionData: match.submissions?.player1 || null,
             player2SubmissionData: match.submissions?.player2 || null
         });
