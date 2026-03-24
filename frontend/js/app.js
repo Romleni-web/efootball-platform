@@ -50,6 +50,90 @@ const Router = {
     }
 };
 
+function parseQuotedArgs(expression) {
+    const args = [];
+    const regex = /'((?:\\'|[^'])*)'/g;
+    let match;
+    while ((match = regex.exec(expression)) !== null) {
+        args.push(match[1].replace(/\\'/g, "'"));
+    }
+    return args;
+}
+
+function executeLegacyHandlerExpression(expression, element, event) {
+    const expr = (expression || '').trim();
+
+    if (expr.startsWith('Router.navigate(')) {
+        const [page] = parseQuotedArgs(expr);
+        if (page) Router.navigate(page);
+        return;
+    }
+    if (expr === 'Auth.logout()') {
+        Auth.logout();
+        return;
+    }
+    if (expr === 'UI.closeModal()') {
+        UI.closeModal();
+        return;
+    }
+    if (expr.startsWith('Pages.switchTab(')) {
+        const [tabName] = parseQuotedArgs(expr);
+        if (tabName) Pages.switchTab.call(element, tabName, event);
+        return;
+    }
+    if (expr.startsWith('UI.showSubmitResultModal(')) {
+        const args = parseQuotedArgs(expr);
+        UI.showSubmitResultModal(...args);
+        return;
+    }
+    if (expr.startsWith('Pages.showCreateTournamentModal(')) {
+        Pages.showCreateTournamentModal();
+        return;
+    }
+    if (expr.startsWith('Pages.verifyPayment(')) {
+        const args = parseQuotedArgs(expr);
+        Pages.verifyPayment(...args);
+        return;
+    }
+    if (expr.startsWith('Pages.resolveMatch(')) {
+        const args = parseQuotedArgs(expr);
+        Pages.resolveMatch(...args);
+        return;
+    }
+    if (expr.startsWith('Pages.showCustomResolveModal(')) {
+        const args = parseQuotedArgs(expr);
+        Pages.showCustomResolveModal(...args);
+        return;
+    }
+    if (expr.startsWith('window.open(')) {
+        const args = parseQuotedArgs(expr);
+        if (args[0]) window.open(args[0], args[1] || '_blank');
+        return;
+    }
+    if (expr.startsWith('navigator.clipboard.writeText(')) {
+        if (expr.includes("document.getElementById('resetLinkField').value")) {
+            const resetField = document.getElementById('resetLinkField');
+            navigator.clipboard.writeText(resetField?.value || '');
+            return;
+        }
+        const [text] = parseQuotedArgs(expr);
+        navigator.clipboard.writeText(text || '');
+    }
+}
+
+function wireLegacyInlineHandlers(root = document) {
+    const nodes = root.querySelectorAll ? root.querySelectorAll('[onclick]') : [];
+    nodes.forEach((node) => {
+        const expression = node.getAttribute('onclick');
+        if (!expression) return;
+        node.removeAttribute('onclick');
+        node.addEventListener('click', (event) => {
+            if (node.tagName === 'A') event.preventDefault();
+            executeLegacyHandlerExpression(expression, node, event);
+        });
+    });
+}
+
 const Pages = {
     // Tournament Format Configuration
     TOURNAMENT_FORMATS: {
@@ -457,11 +541,14 @@ const Pages = {
         }
     },
 
-    switchTab(tabName) {
+    switchTab(tabName, eventArg = null) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        event.target.classList.add('active');
+        const evt = eventArg || window.event;
+        if (evt?.target) {
+            evt.target.classList.add('active');
+        }
         document.getElementById(`tab-${tabName}`).classList.add('active');
     },
 
@@ -1280,12 +1367,27 @@ const Pages = {
     }
 };
 
+window.Router = Router;
+window.Pages = Pages;
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('mobileMenuBtn').addEventListener('click', () => {
         document.getElementById('navLinks').classList.toggle('active');
     });
 
     await Auth.init();
+    wireLegacyInlineHandlers(document);
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    wireLegacyInlineHandlers(node);
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     const pageFromQuery = new URLSearchParams(window.location.search).get('page');
     if (pageFromQuery && Router.routes[pageFromQuery]) {
         Router.navigate(pageFromQuery);

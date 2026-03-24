@@ -752,3 +752,5 @@ const UI = {
         return modal;
     }
 };
+
+window.UI = UI;

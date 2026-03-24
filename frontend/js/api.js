@@ -293,3 +293,5 @@ const API = {
         return data;
     }
 };
+
+window.API = API;
