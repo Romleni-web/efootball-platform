@@ -88,7 +88,8 @@ const matchSchema = new mongoose.Schema({
         }
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    minimize: false // ✅ FIXED: Prevents Mongoose from removing empty objects
 });
 
 // Helper method to check if submissions match

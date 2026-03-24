@@ -45,11 +45,11 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
-        const playerKey = isPlayer1 ? 'player1' : 'player2';
-        
-        // Check if already submitted using $set check
-        const existingMatch = await Match.findById(req.params.id);
-        if (existingMatch.submissions?.[playerKey]) {
+        // ✅ FIXED: Check submission using the populated match object
+        if (isPlayer1 && match.submissions?.player1) {
+            return res.status(400).json({ message: 'You already submitted your result' });
+        }
+        if (isPlayer2 && match.submissions?.player2) {
             return res.status(400).json({ message: 'You already submitted your result' });
         }
 
@@ -62,7 +62,9 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(400).json({ message: 'Winner does not match scores' });
         }
 
-        // FIXED: Use $set to properly save nested submission
+        const playerKey = isPlayer1 ? 'player1' : 'player2';
+
+        // Build submission data
         const submissionData = {
             score1: parseInt(score1),
             score2: parseInt(score2),
@@ -72,38 +74,48 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             screenshotPath: req.file ? req.file.path : null
         };
 
+        // Save submission
         await Match.findByIdAndUpdate(req.params.id, {
             $set: {
                 [`submissions.${playerKey}`]: submissionData
             }
         });
 
-        // Reload match to get updated data
+        // Reload match to get both submissions
         match = await Match.findById(req.params.id)
             .populate('tournament', 'name')
             .populate('player1', 'username')
             .populate('player2', 'username');
 
         const bothSubmitted = match.submissions?.player1 && match.submissions?.player2;
+        
+        // Use the schema method to check if submissions match
         const submissionsMatch = bothSubmitted ? match.submissionsMatch() : false;
 
+        console.log('Both submitted:', bothSubmitted);
+        console.log('Submissions match:', submissionsMatch);
+
         if (bothSubmitted && submissionsMatch) {
-            // Auto-approve matching submissions
+            // Auto-approve
+            const winnerId = match.submissions.player1.winner === 'player1' 
+                ? match.player1._id 
+                : match.player2._id;
+
             await Match.findByIdAndUpdate(req.params.id, {
                 $set: {
                     score1: match.submissions.player1.score1,
                     score2: match.submissions.player1.score2,
-                    winner: match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id,
+                    winner: winnerId,
                     status: 'completed',
                     'adminVerification.status': 'approved',
                     'adminVerification.verifiedAt': new Date(),
                     'adminVerification.finalScore1': match.submissions.player1.score1,
                     'adminVerification.finalScore2': match.submissions.player1.score2,
-                    'adminVerification.finalWinner': match.submissions.player1.winner === 'player1' ? match.player1._id : match.player2._id
+                    'adminVerification.finalWinner': winnerId
                 }
             });
 
-            // Advance winner to next match
+            // Advance winner
             const updatedMatch = await Match.findById(req.params.id);
             if (updatedMatch.nextMatch) {
                 const nextMatch = await Match.findById(updatedMatch.nextMatch);
@@ -187,7 +199,7 @@ router.get('/:id/status', auth, async (req, res) => {
     }
 });
 
-// GET /api/matches/:id - Get match details (ADDED)
+// GET /api/matches/:id - Get match details
 router.get('/:id', auth, async (req, res) => {
     try {
         const match = await Match.findById(req.params.id)
