@@ -52,7 +52,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
-        // ✅ FIXED: Check if submission has actual data (not just empty object)
+        // Check if submission has actual data (not just empty object)
         const player1HasSubmitted = match.submissions?.player1?.submittedAt != null;
         const player2HasSubmitted = match.submissions?.player2?.submittedAt != null;
 
@@ -140,19 +140,52 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 }
             });
 
-            // Advance winner
+            // ✅ FIXED: Advance winner to next match with better logging
+            console.log('=== Starting winner advancement ===');
             const updatedMatch = await Match.findById(req.params.id);
+            console.log('Match winner:', updatedMatch.winner?.toString());
+            console.log('Next match ID:', updatedMatch.nextMatch?.toString());
+
             if (updatedMatch.nextMatch) {
                 const nextMatch = await Match.findById(updatedMatch.nextMatch);
+                console.log('Next match found:', !!nextMatch);
+                
                 if (nextMatch) {
+                    console.log('Next match current players:', {
+                        player1: nextMatch.player1?.toString() || 'empty',
+                        player2: nextMatch.player2?.toString() || 'empty'
+                    });
+                    
                     const updateData = {};
-                    if (!nextMatch.player1) updateData.player1 = updatedMatch.winner;
-                    else if (!nextMatch.player2) updateData.player2 = updatedMatch.winner;
+                    const winnerObjectId = updatedMatch.winner; // Keep as ObjectId
+                    
+                    if (!nextMatch.player1) {
+                        updateData.player1 = winnerObjectId;
+                        console.log('Will set player1 to winner:', winnerObjectId.toString());
+                    } else if (!nextMatch.player2) {
+                        updateData.player2 = winnerObjectId;
+                        console.log('Will set player2 to winner:', winnerObjectId.toString());
+                    } else {
+                        console.log('⚠️ Next match already has both players!');
+                    }
                     
                     if (Object.keys(updateData).length > 0) {
+                        console.log('Updating next match with:', updateData);
                         await Match.findByIdAndUpdate(updatedMatch.nextMatch, { $set: updateData });
+                        console.log('✅ Next match updated successfully');
+                        
+                        // Verify the update
+                        const verifyNextMatch = await Match.findById(updatedMatch.nextMatch);
+                        console.log('Verified next match players:', {
+                            player1: verifyNextMatch.player1?.toString(),
+                            player2: verifyNextMatch.player2?.toString()
+                        });
                     }
+                } else {
+                    console.log('❌ Next match not found in database!');
                 }
+            } else {
+                console.log('ℹ️ No nextMatch field - this is the final match');
             }
 
             await updatePlayerStats(updatedMatch);
@@ -255,6 +288,8 @@ router.get('/:id/debug', auth, async (req, res) => {
             status: match.status,
             player1: match.player1?.toString(),
             player2: match.player2?.toString(),
+            winner: match.winner?.toString(),
+            nextMatch: match.nextMatch?.toString(),
             currentUser: userId,
             isPlayer1: match.player1?.toString() === userId,
             isPlayer2: match.player2?.toString() === userId,
