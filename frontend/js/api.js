@@ -228,7 +228,10 @@ const API = {
             body: JSON.stringify(paymentData)
         });
     },
-
+    
+    async getTournamentMatches(tournamentId) {
+    return this.authenticatedRequest(`/tournaments/${tournamentId}/matches`);
+   },
     // Helper methods
     getHeaders() {
         const token = Auth.getToken();

@@ -282,6 +282,32 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
     }
 });
 
+// GET /api/tournaments/:id/matches
+router.get('/:id/matches', async (req, res) => {
+    try {
+        const tournament = await Tournament.findById(req.params.id)
+            .populate('matches.player1', 'username teamName')
+            .populate('matches.player2', 'username teamName')
+            .populate('matches.winner', 'username');
+        
+        if (!tournament) {
+            return res.status(404).json({ message: 'Tournament not found' });
+        }
+
+        // Sort matches by round and status
+        const sortedMatches = tournament.matches.sort((a, b) => {
+            if (a.round !== b.round) return a.round - b.round;
+            if (a.status === 'ongoing') return -1;
+            if (b.status === 'ongoing') return 1;
+            return 0;
+        });
+
+        res.json(sortedMatches);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // GET bracket - FIXED with proper population
 router.get('/:id/bracket', async (req, res) => {
     try {
