@@ -450,10 +450,11 @@ const Pages = {
 
     async renderMatches(tournamentId, format) {
     try {
-        // Fetch matches for this tournament
-        const matches = await API.getTournamentMatches(tournamentId);
+        // Get tournament data which includes matches
+        const tournament = await API.getTournament(tournamentId);
+        const matches = tournament.matches || [];
         
-        if (!matches || matches.length === 0) {
+        if (matches.length === 0) {
             return '<div class="empty-state"><p>No matches scheduled yet</p></div>';
         }
 
@@ -461,43 +462,51 @@ const Pages = {
 
         return `
             <div class="matches-list">
-                ${matches.map(match => {
-                    const isPlayer1 = match.player1?._id === Auth.getUser()?._id;
-                    const isPlayer2 = match.player2?._id === Auth.getUser()?._id;
+                ${matches.map((match, idx) => {
+                    // Handle different match data structures
+                    const player1 = match.player1?.user || match.player1;
+                    const player2 = match.player2?.user || match.player2;
+                    const winner = match.winner?.user || match.winner;
+                    const status = match.status || 'scheduled';
+                    const round = match.round || 1;
+                    
+                    const isPlayer1 = player1?._id === Auth.getUser()?._id;
+                    const isPlayer2 = player2?._id === Auth.getUser()?._id;
                     const isMyMatch = isPlayer1 || isPlayer2;
-                    const opponent = isPlayer1 ? match.player2 : match.player1;
+                    const opponent = isPlayer1 ? player2 : player1;
                     
                     return `
-                        <div class="match-card ${match.status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
+                        <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                                 <div>
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${match.status === 'completed' ? 'var(--success)' : match.status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
-                                            ${match.status}
+                                        <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
+                                            ${status}
                                         </span>
-                                        ${isRoundBased ? `<span style="font-size: 0.8rem; color: var(--gray);">Round ${match.round || 1}</span>` : ''}
+                                        ${isRoundBased ? `<span style="font-size: 0.8rem; color: var(--gray);">Round ${round}</span>` : ''}
+                                        ${match.matchNumber ? `<span style="font-size: 0.8rem; color: var(--gray);">Match #${match.matchNumber}</span>` : ''}
                                         ${isMyMatch ? '<span style="font-size: 0.8rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 1rem; font-family: Orbitron;">
-                                        <span style="${match.winner?._id === match.player1?._id ? 'color: var(--success); font-weight: bold;' : ''}">
-                                            ${match.player1?.username || 'TBD'}
+                                        <span style="${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : ''}">
+                                            ${player1?.username || 'TBD'}
                                         </span>
                                         <span style="font-size: 1.2rem; color: var(--accent);">
-                                            ${match.status === 'completed' ? `${match.score1} - ${match.score2}` : 'VS'}
+                                            ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
                                         </span>
-                                        <span style="${match.winner?._id === match.player2?._id ? 'color: var(--success); font-weight: bold;' : ''}">
-                                            ${match.player2?.username || 'TBD'}
+                                        <span style="${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : ''}">
+                                            ${player2?.username || 'TBD'}
                                         </span>
                                     </div>
-                                    ${match.winner ? `
+                                    ${winner ? `
                                         <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--gray);">
-                                            Winner: ${match.winner.username}
+                                            Winner: ${winner.username}
                                         </div>
                                     ` : ''}
                                 </div>
                                 
-                                ${isMyMatch && match.status === 'scheduled' ? `
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${match.player1?.username}', '${match.player2?.username}')">
+                                ${isMyMatch && status === 'scheduled' ? `
+                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${player1?.username || 'Player 1'}', '${player2?.username || 'Player 2'}')">
                                         Submit Result
                                     </button>
                                 ` : ''}
@@ -511,7 +520,7 @@ const Pages = {
         console.error('Matches error:', error);
         return `<div class="empty-state"><p>Error loading matches: ${error.message}</p></div>`;
     }
-  },
+},
 
     async dashboard() {
         const mainContent = document.getElementById('mainContent');
