@@ -452,10 +452,13 @@ const Pages = {
     try {
         // Get tournament data which includes matches
         const tournament = await API.getTournament(tournamentId);
-        const matches = tournament.matches || [];
+        let matches = tournament.matches || [];
+        
+        // Filter out matches that don't have any players yet (future bracket matches)
+        matches = matches.filter(match => match.player1 !== null || match.player2 !== null);
         
         if (matches.length === 0) {
-            return '<div class="empty-state"><p>No matches scheduled yet</p></div>';
+            return '<div class="empty-state"><p>No active matches yet. Tournament may still be in registration phase.</p></div>';
         }
 
         const isRoundBased = ['round_robin', 'league', 'swiss'].includes(format);
@@ -463,7 +466,7 @@ const Pages = {
         return `
             <div class="matches-list">
                 ${matches.map((match, idx) => {
-                    // Handle different match data structures
+                    // Handle nested user object or direct player object
                     const player1 = match.player1?.user || match.player1;
                     const player2 = match.player2?.user || match.player2;
                     const winner = match.winner?.user || match.winner;
@@ -473,40 +476,52 @@ const Pages = {
                     const isPlayer1 = player1?._id === Auth.getUser()?._id;
                     const isPlayer2 = player2?._id === Auth.getUser()?._id;
                     const isMyMatch = isPlayer1 || isPlayer2;
-                    const opponent = isPlayer1 ? player2 : player1;
+                    
+                    // Determine opponent name
+                    let opponentName = 'TBD';
+                    if (isPlayer1 && player2?.username) opponentName = player2.username;
+                    else if (isPlayer2 && player1?.username) opponentName = player1.username;
                     
                     return `
                         <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                                <div>
+                                <div style="flex: 1;">
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
+                                        <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; text-transform: uppercase; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
                                             ${status}
                                         </span>
-                                        ${isRoundBased ? `<span style="font-size: 0.8rem; color: var(--gray);">Round ${round}</span>` : ''}
-                                        ${match.matchNumber ? `<span style="font-size: 0.8rem; color: var(--gray);">Match #${match.matchNumber}</span>` : ''}
-                                        ${isMyMatch ? '<span style="font-size: 0.8rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
+                                        ${isRoundBased ? `<span style="font-size: 0.75rem; color: var(--gray);">Round ${round}</span>` : ''}
+                                        ${match.matchNumber ? `<span style="font-size: 0.75rem; color: var(--gray);">#${match.matchNumber}</span>` : ''}
+                                        ${isMyMatch ? '<span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 1rem; font-family: Orbitron;">
-                                        <span style="${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : ''}">
+                                    
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; font-family: Orbitron; flex-wrap: wrap;">
+                                        <span style="font-size: 1rem; ${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player1?._id ? 'opacity: 0.6;' : ''}">
                                             ${player1?.username || 'TBD'}
                                         </span>
-                                        <span style="font-size: 1.2rem; color: var(--accent);">
+                                        
+                                        <span style="font-size: 1.1rem; color: var(--accent); font-weight: bold;">
                                             ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
                                         </span>
-                                        <span style="${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : ''}">
+                                        
+                                        <span style="font-size: 1rem; ${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player2?._id ? 'opacity: 0.6;' : ''}">
                                             ${player2?.username || 'TBD'}
                                         </span>
                                     </div>
-                                    ${winner ? `
-                                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--gray);">
-                                            Winner: ${winner.username}
+                                    
+                                    ${winner?.username ? `
+                                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--success);">
+                                            ✅ Winner: ${winner.username}
+                                        </div>
+                                    ` : status === 'completed' && !winner ? `
+                                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--warning);">
+                                            ⚠️ Awaiting verification
                                         </div>
                                     ` : ''}
                                 </div>
                                 
-                                ${isMyMatch && status === 'scheduled' ? `
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${player1?.username || 'Player 1'}', '${player2?.username || 'Player 2'}')">
+                                ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
+                                    <button class="btn btn-primary" style="white-space: nowrap;" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${player1?.username || 'Player 1'}', '${player2?.username || 'Player 2'}')">
                                         Submit Result
                                     </button>
                                 ` : ''}
