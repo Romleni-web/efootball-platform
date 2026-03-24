@@ -125,6 +125,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             const winnerId = match.submissions.player1.winner === 'player1' 
                 ? match.player1._id 
                 : match.player2._id;
+            let completedMatch = null;
 
             console.log('Auto-approving match. Winner ID:', winnerId?.toString());
 
@@ -160,7 +161,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 tournament.matches = allMatches;
                 
                 // Get fresh match data
-                const completedMatch = await Match.findById(req.params.id)
+                completedMatch = await Match.findById(req.params.id)
                     .populate('player1')
                     .populate('player2');
                 
@@ -176,32 +177,16 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 
                 if (nextMatchInfo && nextMatchInfo._id) {
                     console.log('✅ Winner should advance to match:', nextMatchInfo._id.toString());
-                    
-                    // Determine which slot to fill based on the match index
-                    const currentRoundMatches = allMatches.filter(m => m.round === completedMatch.round);
-                    const sortedMatches = currentRoundMatches.sort((a, b) => a.matchNumber - b.matchNumber);
-                    const matchIndex = sortedMatches.findIndex(m => m._id.toString() === completedMatch._id.toString());
-                    const isPlayer1Slot = matchIndex % 2 === 0;
-                    
-                    const updateField = isPlayer1Slot ? 'player1' : 'player2';
-                    const updateData = {
-                        [updateField]: completedMatch.winner,
-                    };
-                    
-                    // Also update status if both slots will be filled
-                    const nextMatchDoc = await Match.findById(nextMatchInfo._id);
-                    const otherField = isPlayer1Slot ? 'player2' : 'player1';
-                    
-                    if (nextMatchDoc && nextMatchDoc[otherField]) {
-                        updateData.status = 'scheduled';
-                        console.log('Both slots filled, setting status to scheduled');
-                    }
-                    
-                    console.log(`Updating next match ${nextMatchInfo._id.toString()}: setting ${updateField} to ${completedMatch.winner.toString()}`);
-                    
+
                     const updatedNextMatch = await Match.findByIdAndUpdate(
                         nextMatchInfo._id,
-                        { $set: updateData },
+                        { 
+                            $set: {
+                                player1: nextMatchInfo.player1 || null,
+                                player2: nextMatchInfo.player2 || null,
+                                status: nextMatchInfo.status || 'pending'
+                            }
+                        },
                         { new: true }
                     );
                     
@@ -219,6 +204,9 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 }
             }
 
+            if (!completedMatch) {
+                completedMatch = await Match.findById(req.params.id);
+            }
             await updatePlayerStats(completedMatch);
 
             return res.json({ 

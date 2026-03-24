@@ -86,6 +86,27 @@ function executeLegacyHandlerExpression(expression, element, event) {
         UI.showSubmitResultModal(...args);
         return;
     }
+    if (expr.startsWith('UI.startTournament(')) {
+        const [tournamentId] = parseQuotedArgs(expr);
+        if (tournamentId) UI.startTournament(tournamentId);
+        return;
+    }
+    if (expr.startsWith('UI.showBracketModal(')) {
+        const args = parseQuotedArgs(expr);
+        UI.showBracketModal(...args);
+        return;
+    }
+    if (expr.startsWith('UI.showJoinModal(')) {
+        const match = expr.match(/^UI\.showJoinModal\('((?:\\'|[^'])*)',\s*'((?:\\'|[^'])*)',\s*([0-9.]+),\s*'((?:\\'|[^'])*)'\)$/);
+        if (match) {
+            const tournamentId = match[1].replace(/\\'/g, "'");
+            const tournamentName = match[2].replace(/\\'/g, "'");
+            const entryFee = Number(match[3]);
+            const adminPhone = match[4].replace(/\\'/g, "'");
+            UI.showJoinModal(tournamentId, tournamentName, entryFee, adminPhone);
+            return;
+        }
+    }
     if (expr.startsWith('Pages.showCreateTournamentModal(')) {
         Pages.showCreateTournamentModal();
         return;
