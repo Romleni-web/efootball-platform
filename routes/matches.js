@@ -45,6 +45,18 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
+        // ✅ FORCE INITIALIZE: Ensure submissions object exists for old matches
+        if (!match.submissions) {
+            await Match.findByIdAndUpdate(req.params.id, {
+                $set: { submissions: {} }
+            });
+            // Reload to get the updated document
+            match = await Match.findById(req.params.id)
+                .populate('tournament', 'name')
+                .populate('player1', 'username')
+                .populate('player2', 'username');
+        }
+
         // ✅ FIXED: Check submission using the populated match object
         if (isPlayer1 && match.submissions?.player1) {
             return res.status(400).json({ message: 'You already submitted your result' });
