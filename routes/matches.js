@@ -171,18 +171,48 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                     winner: completedMatch.winner?.toString()
                 });
                 
-                const nextMatch = await logic.advanceWinner(completedMatch);
+                // Get the next match info from logic
+                const nextMatchInfo = await logic.advanceWinner(completedMatch);
                 
-                if (nextMatch) {
-                    console.log('✅ Winner advanced to next match:', nextMatch._id?.toString() || 'New match created');
-                    // Save the next match if it was modified
-                    if (nextMatch._id) {
-                        await nextMatch.save();
-                        console.log('Next match saved with:', {
-                            player1: nextMatch.player1?.toString(),
-                            player2: nextMatch.player2?.toString(),
-                            status: nextMatch.status
+                if (nextMatchInfo && nextMatchInfo._id) {
+                    console.log('✅ Winner should advance to match:', nextMatchInfo._id.toString());
+                    
+                    // Determine which slot to fill based on the match index
+                    const currentRoundMatches = allMatches.filter(m => m.round === completedMatch.round);
+                    const sortedMatches = currentRoundMatches.sort((a, b) => a.matchNumber - b.matchNumber);
+                    const matchIndex = sortedMatches.findIndex(m => m._id.toString() === completedMatch._id.toString());
+                    const isPlayer1Slot = matchIndex % 2 === 0;
+                    
+                    const updateField = isPlayer1Slot ? 'player1' : 'player2';
+                    const updateData = {
+                        [updateField]: completedMatch.winner,
+                    };
+                    
+                    // Also update status if both slots will be filled
+                    const nextMatchDoc = await Match.findById(nextMatchInfo._id);
+                    const otherField = isPlayer1Slot ? 'player2' : 'player1';
+                    
+                    if (nextMatchDoc && nextMatchDoc[otherField]) {
+                        updateData.status = 'scheduled';
+                        console.log('Both slots filled, setting status to scheduled');
+                    }
+                    
+                    console.log(`Updating next match ${nextMatchInfo._id.toString()}: setting ${updateField} to ${completedMatch.winner.toString()}`);
+                    
+                    const updatedNextMatch = await Match.findByIdAndUpdate(
+                        nextMatchInfo._id,
+                        { $set: updateData },
+                        { new: true }
+                    );
+                    
+                    if (updatedNextMatch) {
+                        console.log('✅ Next match updated successfully:', {
+                            player1: updatedNextMatch.player1?.toString(),
+                            player2: updatedNextMatch.player2?.toString(),
+                            status: updatedNextMatch.status
                         });
+                    } else {
+                        console.log('❌ Failed to update next match');
                     }
                 } else {
                     console.log('ℹ️ No next match to advance to (final match or tournament complete)');
