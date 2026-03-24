@@ -142,81 +142,51 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 }
             });
 
-            // ✅ FIXED: Advance winner to next match with better logging
+            // ✅ FIXED: Advance winner to next match using tournament logic
             console.log('=== Starting winner advancement ===');
-            
-            // Get fresh match data with populated fields
-            const completedMatch = await Match.findById(req.params.id)
-                .populate('player1')
-                .populate('player2');
-                
-            console.log('Completed match:', {
-                id: completedMatch._id.toString(),
-                winner: completedMatch.winner?.toString(),
-                nextMatch: completedMatch.nextMatch?.toString(),
-                player1: completedMatch.player1?._id?.toString(),
-                player2: completedMatch.player2?._id?.toString()
-            });
 
-            if (completedMatch.nextMatch) {
-                const nextMatch = await Match.findById(completedMatch.nextMatch);
-                console.log('Next match lookup result:', nextMatch ? 'FOUND' : 'NOT FOUND');
+            // Get tournament with all matches populated
+            const tournament = await Tournament.findById(match.tournament._id);
+
+            if (!tournament) {
+                console.log('❌ Tournament not found');
+            } else {
+                // Create logic instance and advance winner
+                const { TournamentLogicFactory } = require('../services/tournamentLogic');
+                const logic = TournamentLogicFactory.create(tournament);
+                
+                // Populate the tournament matches properly
+                const allMatches = await Match.find({ tournament: tournament._id });
+                tournament.matches = allMatches;
+                
+                // Get fresh match data
+                const completedMatch = await Match.findById(req.params.id)
+                    .populate('player1')
+                    .populate('player2');
+                
+                console.log('Calling advanceWinner with match:', {
+                    id: completedMatch._id.toString(),
+                    round: completedMatch.round,
+                    matchNumber: completedMatch.matchNumber,
+                    winner: completedMatch.winner?.toString()
+                });
+                
+                const nextMatch = await logic.advanceWinner(completedMatch);
                 
                 if (nextMatch) {
-                    console.log('Next match current state:', {
-                        id: nextMatch._id.toString(),
-                        player1: nextMatch.player1?.toString() || 'EMPTY',
-                        player2: nextMatch.player2?.toString() || 'EMPTY',
-                        round: nextMatch.round,
-                        matchNumber: nextMatch.matchNumber
-                    });
-                    
-                    // Determine which slot to fill
-                    let slotFilled = null;
-                    const updateData = {};
-                    
-                    // Check if player1 slot is empty (null or undefined)
-                    const player1Empty = !nextMatch.player1;
-                    const player2Empty = !nextMatch.player2;
-                    
-                    console.log('Slot availability:', { player1Empty, player2Empty });
-                    
-                    if (player1Empty) {
-                        updateData.player1 = completedMatch.winner;
-                        slotFilled = 'player1';
-                        console.log('✅ Will fill player1 slot with winner:', completedMatch.winner.toString());
-                    } else if (player2Empty) {
-                        updateData.player2 = completedMatch.winner;
-                        slotFilled = 'player2';
-                        console.log('✅ Will fill player2 slot with winner:', completedMatch.winner.toString());
-                    } else {
-                        console.log('⚠️ Both slots already filled! Cannot advance winner.');
-                    }
-                    
-                    if (slotFilled) {
-                        console.log('Executing update with data:', updateData);
-                        
-                        const updateResult = await Match.findByIdAndUpdate(
-                            completedMatch.nextMatch, 
-                            { $set: updateData },
-                            { new: true } // Return updated document
-                        );
-                        
-                        console.log('Update result:', updateResult ? 'SUCCESS' : 'FAILED');
-                        
-                        if (updateResult) {
-                            console.log('✅ Winner advanced successfully to', slotFilled);
-                            console.log('Next match now has:', {
-                                player1: updateResult.player1?.toString(),
-                                player2: updateResult.player2?.toString()
-                            });
-                        }
+                    console.log('✅ Winner advanced to next match:', nextMatch._id?.toString() || 'New match created');
+                    // Save the next match if it was modified
+                    if (nextMatch._id) {
+                        await nextMatch.save();
+                        console.log('Next match saved with:', {
+                            player1: nextMatch.player1?.toString(),
+                            player2: nextMatch.player2?.toString(),
+                            status: nextMatch.status
+                        });
                     }
                 } else {
-                    console.log('❌ Next match not found in database! ID:', completedMatch.nextMatch.toString());
+                    console.log('ℹ️ No next match to advance to (final match or tournament complete)');
                 }
-            } else {
-                console.log('ℹ️ No nextMatch field - this is the final match, no advancement needed');
             }
 
             await updatePlayerStats(completedMatch);
