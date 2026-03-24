@@ -448,94 +448,92 @@ const Pages = {
         `;
     },
 
-    async renderMatches(tournamentId, format) {
-    try {
-        // Get tournament data which includes matches
-        const tournament = await API.getTournament(tournamentId);
-        let matches = tournament.matches || [];
-        
-        // Filter out matches that don't have any players yet (future bracket matches)
-        matches = matches.filter(match => match.player1 !== null || match.player2 !== null);
-        
-        if (matches.length === 0) {
-            return '<div class="empty-state"><p>No active matches yet. Tournament may still be in registration phase.</p></div>';
-        }
+        async renderMatches(tournamentId, format) {
+        try {
+            const tournament = await API.getTournament(tournamentId);
+            let matches = tournament.matches || [];
+            
+            // Filter out matches that don't have any players yet (future bracket matches)
+            matches = matches.filter(match => match.player1 !== null || match.player2 !== null);
+            
+            if (matches.length === 0) {
+                return '<div class="empty-state"><p>No active matches yet. Tournament may still be in registration phase.</p></div>';
+            }
 
-        const isRoundBased = ['round_robin', 'league', 'swiss'].includes(format);
+            const isRoundBased = ['round_robin', 'league', 'swiss'].includes(format);
 
-        return `
-            <div class="matches-list">
-                ${matches.map((match, idx) => {
-                    // Handle nested user object or direct player object
-                    const player1 = match.player1?.user || match.player1;
-                    const player2 = match.player2?.user || match.player2;
-                    const winner = match.winner?.user || match.winner;
-                    const status = match.status || 'scheduled';
-                    const round = match.round || 1;
-                    
-                    const isPlayer1 = player1?._id === Auth.getUser()?._id;
-                    const isPlayer2 = player2?._id === Auth.getUser()?._id;
-                    const isMyMatch = isPlayer1 || isPlayer2;
-                    
-                    // Determine opponent name
-                    let opponentName = 'TBD';
-                    if (isPlayer1 && player2?.username) opponentName = player2.username;
-                    else if (isPlayer2 && player1?.username) opponentName = player1.username;
-                    
-                    return `
-                        <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; text-transform: uppercase; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
-                                            ${status}
-                                        </span>
-                                        ${isRoundBased ? `<span style="font-size: 0.75rem; color: var(--gray);">Round ${round}</span>` : ''}
-                                        ${match.matchNumber ? `<span style="font-size: 0.75rem; color: var(--gray);">#${match.matchNumber}</span>` : ''}
-                                        ${isMyMatch ? '<span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
+            return `
+                <div class="matches-list">
+                    ${matches.map((match, idx) => {
+                        // Handle populated player data
+                        const player1 = match.player1;
+                        const player2 = match.player2;
+                        const winner = match.winner;
+                        const status = match.status || 'scheduled';
+                        const round = match.round || 1;
+                        
+                        const isPlayer1 = player1?._id === Auth.getUser()?._id;
+                        const isPlayer2 = player2?._id === Auth.getUser()?._id;
+                        const isMyMatch = isPlayer1 || isPlayer2;
+                        
+                        const p1Name = player1?.username || 'TBD';
+                        const p2Name = player2?.username || 'TBD';
+                        const winnerName = winner?.username;
+
+                        return `
+                            <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; text-transform: uppercase; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
+                                                ${status}
+                                            </span>
+                                            ${isRoundBased ? `<span style="font-size: 0.75rem; color: var(--gray);">Round ${round}</span>` : ''}
+                                            ${match.matchNumber ? `<span style="font-size: 0.75rem; color: var(--gray);">#${match.matchNumber}</span>` : ''}
+                                            ${isMyMatch ? '<span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
+                                        </div>
+                                        
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; font-family: Orbitron; flex-wrap: wrap;">
+                                            <span style="font-size: 1rem; ${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player1?._id ? 'opacity: 0.6;' : ''}">
+                                                ${p1Name}
+                                            </span>
+                                            
+                                            <span style="font-size: 1.1rem; color: var(--accent); font-weight: bold;">
+                                                ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
+                                            </span>
+                                            
+                                            <span style="font-size: 1rem; ${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player2?._id ? 'opacity: 0.6;' : ''}">
+                                                ${p2Name}
+                                            </span>
+                                        </div>
+                                        
+                                        ${winnerName ? `
+                                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--success);">
+                                                ✅ Winner: ${winnerName}
+                                            </div>
+                                        ` : status === 'completed' && !winner ? `
+                                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--warning);">
+                                                ⚠️ Awaiting verification
+                                            </div>
+                                        ` : ''}
                                     </div>
                                     
-                                    <div style="display: flex; align-items: center; gap: 0.75rem; font-family: Orbitron; flex-wrap: wrap;">
-                                        <span style="font-size: 1rem; ${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player1?._id ? 'opacity: 0.6;' : ''}">
-                                            ${player1?.username || 'TBD'}
-                                        </span>
-                                        
-                                        <span style="font-size: 1.1rem; color: var(--accent); font-weight: bold;">
-                                            ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
-                                        </span>
-                                        
-                                        <span style="font-size: 1rem; ${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player2?._id ? 'opacity: 0.6;' : ''}">
-                                            ${player2?.username || 'TBD'}
-                                        </span>
-                                    </div>
-                                    
-                                    ${winner?.username ? `
-                                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--success);">
-                                            ✅ Winner: ${winner.username}
-                                        </div>
-                                    ` : status === 'completed' && !winner ? `
-                                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--warning);">
-                                            ⚠️ Awaiting verification
-                                        </div>
+                                    ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
+                                        <button class="btn btn-primary" style="white-space: nowrap;" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${p1Name}', '${p2Name}')">
+                                            Submit Result
+                                        </button>
                                     ` : ''}
                                 </div>
-                                
-                                ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
-                                    <button class="btn btn-primary" style="white-space: nowrap;" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${player1?.username || 'Player 1'}', '${player2?.username || 'Player 2'}')">
-                                        Submit Result
-                                    </button>
-                                ` : ''}
                             </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    } catch (error) {
-        console.error('Matches error:', error);
-        return `<div class="empty-state"><p>Error loading matches: ${error.message}</p></div>`;
-    }
-},
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Matches error:', error);
+            return `<div class="empty-state"><p>Error loading matches: ${error.message}</p></div>`;
+        }
+    },
 
     async dashboard() {
         const mainContent = document.getElementById('mainContent');

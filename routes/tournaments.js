@@ -41,18 +41,25 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET single tournament
+// GET single tournament - FIXED with deep population
 router.get('/:id', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
             .populate('registeredPlayers.user', 'username teamName efootballId')
-            .populate('matches')
+            .populate({
+                path: 'matches',
+                populate: [
+                    { path: 'player1', select: 'username teamName efootballId' },
+                    { path: 'player2', select: 'username teamName efootballId' },
+                    { path: 'winner', select: 'username' }
+                ]
+            })
             .populate('standings.player', 'username teamName');
         
         if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
         res.json(tournament);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: error.message });
     }
 });
 
