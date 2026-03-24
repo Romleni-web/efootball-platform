@@ -282,32 +282,62 @@ router.post('/:id/matches/:matchId/result', auth, async (req, res) => {
     }
 });
 
-// GET bracket - PUBLIC (shows real names to everyone)
+// GET bracket - FIXED with proper population
 router.get('/:id/bracket', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id).populate({
             path: 'matches',
             populate: [
-                { path: 'player1', select: 'username teamName' },
-                { path: 'player2', select: 'username teamName' },
-                { path: 'winner', select: 'username' }
+                { path: 'player1', select: 'username teamName efootballId' },
+                { path: 'player2', select: 'username teamName efootballId' },
+                { path: 'winner', select: 'username' },
+                { path: 'nextMatch', select: 'round matchNumber status' }
             ]
         });
 
         if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
-        const logic = TournamentLogicFactory.create(tournament);
-        const bracketData = logic.getBracketData(tournament.matches);
+        // Get matches organized by rounds
+        const matchesByRound = {};
+        tournament.matches.forEach(match => {
+            if (!matchesByRound[match.round]) {
+                matchesByRound[match.round] = [];
+            }
+            matchesByRound[match.round].push(match);
+        });
+
+        // Sort matches by matchNumber within each round
+        Object.keys(matchesByRound).forEach(round => {
+            matchesByRound[round].sort((a, b) => a.matchNumber - b.matchNumber);
+        });
+
+        // Format for frontend
+        const rounds = Object.keys(matchesByRound).sort((a, b) => a - b).map(round => ({
+            round: parseInt(round),
+            matches: matchesByRound[round].map(match => ({
+                _id: match._id,
+                player1: match.player1,
+                player2: match.player2,
+                winner: match.winner,
+                score1: match.score1,
+                score2: match.score2,
+                status: match.status,
+                matchNumber: match.matchNumber,
+                nextMatch: match.nextMatch,
+                isBronzeMatch: match.isBronzeMatch
+            }))
+        }));
 
         res.json({
             format: tournament.format,
-            rounds: bracketData,
+            rounds: rounds,
             currentRound: tournament.currentRound,
             standings: ['round_robin', 'league', 'swiss'].includes(tournament.format) 
                 ? tournament.standings 
                 : null
         });
     } catch (error) {
+        console.error('Bracket error:', error);
         res.status(500).json({ message: error.message });
     }
 });

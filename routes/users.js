@@ -26,7 +26,7 @@ const auth = async (req, res, next) => {
 // GET /api/users/stats
 router.get('/stats', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('points wins losses');
+        const user = await User.findById(req.user._id).select('points wins losses');
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -37,7 +37,7 @@ router.get('/stats', auth, async (req, res) => {
 router.get('/tournaments', auth, async (req, res) => {
     try {
         const tournaments = await Tournament.find({
-            'registeredPlayers.user': req.user.id
+            'registeredPlayers.user': req.user._id
         }).populate('registeredPlayers.user', 'username teamName');
         res.json(tournaments);
     } catch (error) {
@@ -45,11 +45,13 @@ router.get('/tournaments', auth, async (req, res) => {
     }
 });
 
-// GET /api/users/matches/upcoming
+// GET /api/users/matches/upcoming - FIXED
 router.get('/matches/upcoming', auth, async (req, res) => {
     try {
+        const userId = req.user._id.toString(); // ✅ FIXED: Use _id not id
+        
         const matches = await Match.find({
-            $or: [{ player1: req.user.id }, { player2: req.user.id }],
+            $or: [{ player1: req.user._id }, { player2: req.user._id }], // ✅ Use _id
             status: { $in: ['scheduled', 'ongoing'] },
             winner: null
         })
@@ -58,16 +60,23 @@ router.get('/matches/upcoming', auth, async (req, res) => {
         .populate('player2', 'username efootballId');
 
         const formattedMatches = matches.map(match => {
-            const isPlayer1 = match.player1?._id.toString() === req.user.id;
+            const isPlayer1 = match.player1?._id.toString() === userId; // ✅ Compare with userId
             return {
                 _id: match._id,
                 tournament: match.tournament,
-                opponent: isPlayer1 ? match.player2 : match.player1
+                opponent: isPlayer1 ? match.player2 : match.player1,
+                isPlayer1: isPlayer1,
+                myEfootballId: isPlayer1 ? match.player1?.efootballId : match.player2?.efootballId,
+                opponentEfootballId: isPlayer1 ? match.player2?.efootballId : match.player1?.efootballId,
+                round: match.round,
+                matchNumber: match.matchNumber,
+                status: match.status
             };
         });
 
         res.json(formattedMatches);
     } catch (error) {
+        console.error('Upcoming matches error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -76,7 +85,7 @@ router.get('/matches/upcoming', auth, async (req, res) => {
 router.get('/matches/history', auth, async (req, res) => {
     try {
         const matches = await Match.find({
-            $or: [{ player1: req.user.id }, { player2: req.user.id }],
+            $or: [{ player1: req.user._id }, { player2: req.user._id }],
             status: 'completed'
         })
         .populate('tournament', 'name')
@@ -100,7 +109,7 @@ router.patch('/profile', auth, [
         const updateData = {};
 
         if (efootballId) {
-            const existingUser = await User.findOne({ efootballId, _id: { $ne: req.user.id } });
+            const existingUser = await User.findOne({ efootballId, _id: { $ne: req.user._id } });
             if (existingUser) {
                 return res.status(400).json({ message: 'eFootball ID already taken' });
             }
@@ -109,7 +118,7 @@ router.patch('/profile', auth, [
 
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
 
-        const user = await User.findByIdAndUpdate(req.user.id, { $set: updateData }, { new: true }).select('-password');
+        const user = await User.findByIdAndUpdate(req.user._id, { $set: updateData }, { new: true }).select('-password');
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });

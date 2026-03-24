@@ -142,7 +142,7 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 }
             });
 
-            // ✅ FIXED: Advance winner to next match
+            // ✅ FIXED: Advance winner to next match with better logging
             console.log('=== Starting winner advancement ===');
             
             // Get fresh match data with populated fields
@@ -257,12 +257,13 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
     }
 });
 
-// GET /api/matches/:id/status
+// GET /api/matches/:id/status - FIXED with nextMatch population
 router.get('/:id/status', auth, async (req, res) => {
     try {
         const match = await Match.findById(req.params.id)
-            .populate('player1', 'username')
-            .populate('player2', 'username');
+            .populate('player1', 'username efootballId')
+            .populate('player2', 'username efootballId')
+            .populate('nextMatch', 'player1 player2 status round matchNumber'); // ✅ Added nextMatch population
 
         if (!match) return res.status(404).json({ message: 'Match not found' });
 
@@ -276,6 +277,7 @@ router.get('/:id/status', auth, async (req, res) => {
             player1: match.player1,
             player2: match.player2,
             round: match.round,
+            nextMatch: match.nextMatch, // ✅ Now populated
             mySubmission: isPlayer1 ? match.submissions?.player1 : match.submissions?.player2,
             opponentSubmitted: isPlayer1 ? !!match.submissions?.player2?.submittedAt : !!match.submissions?.player1?.submittedAt,
             bothSubmitted: !!(match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt),
