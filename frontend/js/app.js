@@ -373,32 +373,38 @@ const Pages = {
         `;
     },
 
+    // FIXED: Updated renderBracket to handle API response structure
     async renderBracket(tournamentId) {
         if (!Auth.isAuthenticated()) {
             return '<div class="empty-state"><p>Login to view bracket</p></div>';
         }
 
         try {
-            const bracket = await API.getTournamentBracket(tournamentId);
-            if (!bracket || bracket.length === 0) {
+            const data = await API.getTournamentBracket(tournamentId);
+            
+            // Handle API response structure (object with rounds array)
+            const rounds = data.rounds || data;
+            
+            if (!rounds || rounds.length === 0) {
                 return '<div class="empty-state"><p>Bracket not generated yet</p></div>';
             }
 
             return `
                 <div class="bracket">
-                    ${bracket.map((round, idx) => `
+                    ${rounds.map((round, idx) => `
                         <div class="round">
-                            <h4 class="round-title">Round ${idx + 1}</h4>
+                            <h4 class="round-title">Round ${round.round || idx + 1}</h4>
                             ${round.matches.map(match => `
-                                <div class="match">
-                                    <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''}">
+                                <div class="match ${match.status || ''}">
+                                    <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''} ${!match.player1 ? 'tbd' : ''}">
                                         <span class="player-name">${match.player1?.username || 'TBD'}</span>
                                         <span class="player-score">${match.score1 ?? '-'}</span>
                                     </div>
-                                    <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''}">
+                                    <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''} ${!match.player2 ? 'tbd' : ''}">
                                         <span class="player-name">${match.player2?.username || 'TBD'}</span>
                                         <span class="player-score">${match.score2 ?? '-'}</span>
                                     </div>
+                                    ${match.status === 'completed' ? '<div class="match-status">✓</div>' : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -406,7 +412,8 @@ const Pages = {
                 </div>
             `;
         } catch (error) {
-            return '<div class="empty-state"><p>Unable to load bracket</p></div>';
+            console.error('Bracket error:', error);
+            return `<div class="empty-state"><p>Unable to load bracket: ${error.message}</p></div>`;
         }
     },
 
@@ -530,62 +537,63 @@ const Pages = {
     },
 
     async leaderboard() {
-    const mainContent = document.getElementById('mainContent');
-    mainContent.innerHTML = '<div class="spinner"></div>';
+        const mainContent = document.getElementById('mainContent');
+        mainContent.innerHTML = '<div class="spinner"></div>';
 
-    try {
-        const players = await API.getLeaderboard();
-        mainContent.innerHTML = `
-            <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">🏆 Global Leaderboard</h2>
-            <div class="leaderboard-table">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: rgba(255,255,255,0.05);">
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Rank</th>
-                            <th style="padding: 1rem; text-align: left; font-family: Orbitron; color: var(--gray);">Player</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Played</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">W</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">L</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Win%</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GF</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GA</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--accent);">Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${players.map((p, idx) => `
-                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${idx < 3 ? `background: ${idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${p._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important;' : ''}">
-                                <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
-                                    ${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : p.rank}
-                                </td>
-                                <td style="padding: 0.75rem;">
-                                    <strong style="color: var(--light); font-size: 1.05rem;">${p.username}</strong>
-                                    ${p.teamName ? `<br><small style="color: var(--gray);">${p.teamName}</small>` : ''}
-                                    ${p.efootballId ? `<br><small style="color: var(--primary); font-family: Orbitron;">ID: ${p.efootballId}</small>` : ''}
-                                    ${p._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
-                                </td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
-                                <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
-                                    ${p.points}
-                                </td>
+        try {
+            const players = await API.getLeaderboard();
+            mainContent.innerHTML = `
+                <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">🏆 Global Leaderboard</h2>
+                <div class="leaderboard-table">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: rgba(255,255,255,0.05);">
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Rank</th>
+                                <th style="padding: 1rem; text-align: left; font-family: Orbitron; color: var(--gray);">Player</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Played</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">W</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">L</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Win%</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GF</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GA</th>
+                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--accent);">Points</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            <p style="color: var(--gray); text-align: center; margin-top: 1rem; font-size: 0.9rem;">
-                Points: 3 for win, 1 for loss | Updated from all tournament matches
-            </p>
-        `;
-    } catch (error) {
-        mainContent.innerHTML = `<div class="empty-state"><p>Error loading leaderboard: ${error.message}</p></div>`;
-    }
-},
+                        </thead>
+                        <tbody>
+                            ${players.map((p, idx) => `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${idx < 3 ? `background: ${idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${p._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important;' : ''}">
+                                    <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
+                                        ${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : p.rank}
+                                    </td>
+                                    <td style="padding: 0.75rem;">
+                                        <strong style="color: var(--light); font-size: 1.05rem;">${p.username}</strong>
+                                        ${p.teamName ? `<br><small style="color: var(--gray);">${p.teamName}</small>` : ''}
+                                        ${p.efootballId ? `<br><small style="color: var(--primary); font-family: Orbitron;">ID: ${p.efootballId}</small>` : ''}
+                                        ${p._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
+                                    </td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
+                                    <td style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
+                                    <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
+                                        ${p.points}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <p style="color: var(--gray); text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                    Points: 3 for win, 1 for loss | Updated from all tournament matches
+                </p>
+            `;
+        } catch (error) {
+            mainContent.innerHTML = `<div class="empty-state"><p>Error loading leaderboard: ${error.message}</p></div>`;
+        }
+    },
+
     async admin() {
         const mainContent = document.getElementById('mainContent');
         
