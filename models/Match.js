@@ -92,25 +92,27 @@ const matchSchema = new mongoose.Schema({
     minimize: false
 });
 
-// ✅ FIXED: Check if submissions describe the same match result
+// Check if submissions describe the same match result.
+// Accept both formats:
+// 1) Absolute match order (both submit P1/P2 in same order)
+// 2) Player-perspective order (mirrored scores and opposite winner labels)
 matchSchema.methods.submissionsMatch = function() {
     const s1 = this.submissions?.player1;
     const s2 = this.submissions?.player2;
     
     if (!s1 || !s2) return false;
-    
-    // Both players submit from their own perspective:
-    // P1: score1=myScore, score2=opponentScore, winner=whoWonFromMyView
-    // P2: score1=myScore, score2=opponentScore, winner=whoWonFromMyView
-    
-    // For consistency: P1's score should equal P2's opponent score, and vice versa
-    const scoresConsistent = s1.score1 === s2.score2 && s1.score2 === s2.score1;
-    
-    // Winner should be opposite (if P1 says 'player1', P2 should say 'player2')
-    // Because 'player1' from P1's view = 'player2' from P2's view (same actual person)
-    const winnerConsistent = s1.winner !== s2.winner;
-    
-    return scoresConsistent && winnerConsistent;
+
+    const sameOrientation =
+        s1.score1 === s2.score1 &&
+        s1.score2 === s2.score2 &&
+        s1.winner === s2.winner;
+
+    const mirroredOrientation =
+        s1.score1 === s2.score2 &&
+        s1.score2 === s2.score1 &&
+        s1.winner !== s2.winner;
+
+    return sameOrientation || mirroredOrientation;
 };
 
 // Helper to check if both submitted

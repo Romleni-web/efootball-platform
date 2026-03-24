@@ -205,6 +205,10 @@ const API = {
         });
     },
 
+    async getMatchAdvancementDebug(matchId) {
+        return this.authenticatedRequest(`/admin/matches/${matchId}/advancement-debug`);
+    },
+
     // ============================================
     // ADMIN - PAYMENTS & TOURNAMENTS
     // ============================================

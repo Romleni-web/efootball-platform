@@ -126,6 +126,11 @@ function executeLegacyHandlerExpression(expression, element, event) {
         Pages.showCustomResolveModal(...args);
         return;
     }
+    if (expr.startsWith('Pages.showAdvancementDebug(')) {
+        const args = parseQuotedArgs(expr);
+        Pages.showAdvancementDebug(...args);
+        return;
+    }
     if (expr.startsWith('window.open(')) {
         const args = parseQuotedArgs(expr);
         if (args[0]) window.open(args[0], args[1] || '_blank');
@@ -1068,12 +1073,20 @@ const Pages = {
                                                     <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
                                                         ⚖️ Custom
                                                     </button>
+                                                    <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                                        🔍 Advancement Debug
+                                                    </button>
                                                 </div>
                                             </div>
                                         ` : `
                                             <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">
                                                 ${r.disputeReason}
                                             </p>
+                                            <div style="margin-top: 0.75rem;">
+                                                <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                                    🔍 Advancement Debug
+                                                </button>
+                                            </div>
                                         `}
                                     </div>
                                 `).join('')}
@@ -1337,6 +1350,72 @@ const Pages = {
                 UI.hideLoading();
             }
         });
+    },
+
+    async showAdvancementDebug(matchId) {
+        try {
+            UI.showLoading();
+            const data = await API.getMatchAdvancementDebug(matchId);
+            UI.hideLoading();
+
+            const current = data.currentMatch;
+            const computed = data.computedNextMatch;
+            const persisted = data.persistedNextMatch;
+
+            const content = `
+                <div class="modal-header">
+                    <h3>Advancement Debug</h3>
+                    <button class="close-btn" onclick="UI.closeModal()">×</button>
+                </div>
+                <div style="padding: 1rem 1.5rem 1.5rem;">
+                    <p style="color: var(--gray); margin-bottom: 1rem;">
+                        ${data.tournament?.name || 'Tournament'} (${data.tournament?.format || 'unknown'})
+                    </p>
+
+                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.8rem;">
+                        <strong>Current Match</strong>
+                        <div style="margin-top: 0.4rem; color: var(--gray);">
+                            Round ${current.round} • Match #${current.matchNumber} • ${current.status}
+                        </div>
+                        <div style="margin-top: 0.4rem;">
+                            ${current.player1?.username || 'TBD'} vs ${current.player2?.username || 'TBD'}
+                        </div>
+                        <div style="margin-top: 0.4rem; color: var(--primary);">
+                            Winner: ${current.winner?.username || 'None'}
+                        </div>
+                    </div>
+
+                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.8rem;">
+                        <strong>Computed Next Match (Logic)</strong>
+                        ${computed ? `
+                            <div style="margin-top: 0.4rem; color: var(--gray);">
+                                Round ${computed.round} • Match #${computed.matchNumber} • ${computed.status}
+                            </div>
+                            <div style="margin-top: 0.4rem;">
+                                ${(computed.player1?.username || computed.player1 || 'TBD')} vs ${(computed.player2?.username || computed.player2 || 'TBD')}
+                            </div>
+                        ` : '<div style="margin-top: 0.4rem; color: var(--warning);">No next match (possibly final or missing winner)</div>'}
+                    </div>
+
+                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem;">
+                        <strong>Persisted Next Match (DB)</strong>
+                        ${persisted ? `
+                            <div style="margin-top: 0.4rem; color: var(--gray);">
+                                Round ${persisted.round} • Match #${persisted.matchNumber} • ${persisted.status}
+                            </div>
+                            <div style="margin-top: 0.4rem;">
+                                ${persisted.player1?.username || 'TBD'} vs ${persisted.player2?.username || 'TBD'}
+                            </div>
+                        ` : '<div style="margin-top: 0.4rem; color: var(--warning);">No persisted next match found</div>'}
+                    </div>
+                </div>
+            `;
+
+            UI.showModal(content);
+        } catch (error) {
+            UI.hideLoading();
+            UI.showToast(error.message || 'Failed to load advancement debug', 'error');
+        }
     },
 
     async verifyPayment(paymentId, action) {

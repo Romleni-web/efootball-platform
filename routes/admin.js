@@ -110,6 +110,74 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
     }
 });
 
+// GET /api/admin/matches/:matchId/advancement-debug
+router.get('/matches/:matchId/advancement-debug', auth, adminOnly, async (req, res) => {
+    try {
+        const match = await Match.findById(req.params.matchId)
+            .populate('player1', 'username')
+            .populate('player2', 'username')
+            .populate('winner', 'username');
+
+        if (!match) return res.status(404).json({ message: 'Match not found' });
+
+        const tournament = await Tournament.findById(match.tournament);
+        if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+        const allMatches = await Match.find({ tournament: tournament._id })
+            .populate('player1', 'username')
+            .populate('player2', 'username')
+            .populate('winner', 'username');
+
+        tournament.matches = allMatches;
+
+        const logic = TournamentLogicFactory.create(tournament);
+        const computedNext = match.winner ? await logic.advanceWinner(match) : null;
+
+        let nextMatchDoc = null;
+        if (computedNext?._id) {
+            nextMatchDoc = await Match.findById(computedNext._id)
+                .populate('player1', 'username')
+                .populate('player2', 'username')
+                .populate('winner', 'username');
+        }
+
+        res.json({
+            tournament: {
+                id: tournament._id,
+                name: tournament.name,
+                format: tournament.format
+            },
+            currentMatch: {
+                id: match._id,
+                round: match.round,
+                matchNumber: match.matchNumber,
+                status: match.status,
+                player1: match.player1,
+                player2: match.player2,
+                winner: match.winner
+            },
+            computedNextMatch: computedNext ? {
+                id: computedNext._id,
+                round: computedNext.round,
+                matchNumber: computedNext.matchNumber,
+                status: computedNext.status,
+                player1: computedNext.player1,
+                player2: computedNext.player2
+            } : null,
+            persistedNextMatch: nextMatchDoc ? {
+                id: nextMatchDoc._id,
+                round: nextMatchDoc.round,
+                matchNumber: nextMatchDoc.matchNumber,
+                status: nextMatchDoc.status,
+                player1: nextMatchDoc.player1,
+                player2: nextMatchDoc.player2
+            } : null
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // POST /api/admin/matches/:matchId/resolve
 router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
     try {
