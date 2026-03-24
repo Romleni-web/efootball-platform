@@ -16,6 +16,7 @@ const auth = async (req, res, next) => {
         if (!user) return res.status(401).json({ message: 'Invalid token' });
         
         req.user = user;
+        req.userId = user._id.toString(); // ✅ FIXED: Set consistent userId
         next();
     } catch (error) {
         res.status(401).json({ message: 'Token is not valid' });
@@ -26,7 +27,7 @@ const auth = async (req, res, next) => {
 router.post('/:id/result', auth, require('../middleware/upload').single('screenshot'), async (req, res) => {
     try {
         const { score1, score2, winner, notes } = req.body;
-        const userId = req.user.id;
+        const userId = req.userId; // ✅ FIXED: Use req.userId instead of req.user.id
 
         console.log('Received submission:', { score1, score2, winner, userId });
 
@@ -38,15 +39,23 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
         if (!match) return res.status(404).json({ message: 'Match not found' });
         if (match.status === 'completed') return res.status(400).json({ message: 'Match already completed' });
 
-        const isPlayer1 = match.player1?._id?.toString() === userId;
-        const isPlayer2 = match.player2?._id?.toString() === userId;
+        // ✅ FIXED: Consistent string comparison
+        const matchPlayer1Id = match.player1?._id?.toString();
+        const matchPlayer2Id = match.player2?._id?.toString();
+        
+        console.log('Player IDs:', { matchPlayer1Id, matchPlayer2Id, currentUser: userId });
+
+        const isPlayer1 = matchPlayer1Id === userId;
+        const isPlayer2 = matchPlayer2Id === userId;
 
         if (!isPlayer1 && !isPlayer2) {
+            console.log('User not participant:', userId, 'is not', matchPlayer1Id, 'or', matchPlayer2Id);
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
         // ✅ FORCE INITIALIZE: Ensure submissions object exists for old matches
         if (!match.submissions) {
+            console.log('Initializing submissions object for match:', match._id);
             await Match.findByIdAndUpdate(req.params.id, {
                 $set: { submissions: {} }
             });
@@ -55,13 +64,23 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 .populate('tournament', 'name')
                 .populate('player1', 'username')
                 .populate('player2', 'username');
+            console.log('After init, match.submissions:', match.submissions);
         }
 
         // ✅ FIXED: Check submission using the populated match object
+        console.log('Checking submissions:', {
+            isPlayer1,
+            isPlayer2,
+            player1Submission: match.submissions?.player1,
+            player2Submission: match.submissions?.player2
+        });
+
         if (isPlayer1 && match.submissions?.player1) {
+            console.log('Player 1 already submitted');
             return res.status(400).json({ message: 'You already submitted your result' });
         }
         if (isPlayer2 && match.submissions?.player2) {
+            console.log('Player 2 already submitted');
             return res.status(400).json({ message: 'You already submitted your result' });
         }
 
@@ -86,6 +105,8 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             screenshotPath: req.file ? req.file.path : null
         };
 
+        console.log('Saving submission for', playerKey, ':', submissionData);
+
         // Save submission
         await Match.findByIdAndUpdate(req.params.id, {
             $set: {
@@ -98,6 +119,8 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
             .populate('tournament', 'name')
             .populate('player1', 'username')
             .populate('player2', 'username');
+
+        console.log('After save, match.submissions:', match.submissions);
 
         const bothSubmitted = match.submissions?.player1 && match.submissions?.player2;
         
@@ -189,7 +212,9 @@ router.get('/:id/status', auth, async (req, res) => {
 
         if (!match) return res.status(404).json({ message: 'Match not found' });
 
-        const userId = req.user.id;
+        const userId = req.userId; // ✅ FIXED: Use req.userId
+
+        // ✅ FIXED: Consistent string comparison
         const isPlayer1 = match.player1?._id?.toString() === userId;
 
         res.json({
@@ -225,6 +250,34 @@ router.get('/:id', auth, async (req, res) => {
         res.json(match);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DEBUG: Check match submissions state
+router.get('/:id/debug', auth, async (req, res) => {
+    try {
+        const match = await Match.findById(req.params.id).lean();
+        if (!match) return res.status(404).json({ message: 'Match not found' });
+        
+        const userId = req.userId; // ✅ FIXED: Use req.userId
+        
+        res.json({
+            matchId: match._id.toString(),
+            status: match.status,
+            player1: match.player1?.toString(),
+            player2: match.player2?.toString(),
+            currentUser: userId,
+            isPlayer1: match.player1?.toString() === userId,
+            isPlayer2: match.player2?.toString() === userId,
+            hasSubmissionsField: 'submissions' in match,
+            submissions: match.submissions || null,
+            player1HasSubmission: !!(match.submissions?.player1),
+            player2HasSubmission: !!(match.submissions?.player2),
+            player1SubmissionData: match.submissions?.player1 || null,
+            player2SubmissionData: match.submissions?.player2 || null
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
