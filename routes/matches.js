@@ -325,7 +325,13 @@ if (process.env.NODE_ENV !== 'production') {
         }
     });
 }
-
+// Quick fix via API
+router.post('/quick-fix/:matchId/:nextMatchId', auth, async (req, res) => {
+    await Match.findByIdAndUpdate(req.params.matchId, {
+        nextMatch: req.params.nextMatchId
+    });
+    res.json({ message: 'Fixed' });
+});
 async function updatePlayerStats(match) {
     try {
         const winner = await User.findById(match.winner);
