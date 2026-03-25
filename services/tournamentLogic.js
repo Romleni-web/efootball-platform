@@ -82,7 +82,8 @@ class SingleEliminationLogic extends TournamentLogic {
                 player1: player1?.user || null,
                 player2: player2?.user || null,
                 status: player2 ? 'scheduled' : 'completed',
-                winner: player2 ? null : (player1 ? player1.user : null)
+                winner: player2 ? null : (player1 ? player1.user : null),
+                nextMatch: null // Will be set later
             });
 
             round1Matches.push(match);
@@ -92,30 +93,57 @@ class SingleEliminationLogic extends TournamentLogic {
         // Subsequent rounds
         for (let round = 2; round <= rounds; round++) {
             const matchesInRound = bracketSize / Math.pow(2, round);
+            const roundMatches = [];
             
             for (let i = 0; i < matchesInRound; i++) {
-                matches.push(new Match({
+                const match = new Match({
                     tournament: this.tournament._id,
                     round: round,
                     matchNumber: matchNumber++,
                     player1: null,
                     player2: null,
-                    status: 'pending'
-                }));
+                    status: 'pending',
+                    nextMatch: null // Will be set later
+                });
+                roundMatches.push(match);
+                matches.push(match);
+            }
+            
+            // Link previous round matches to this round
+            const prevRoundMatches = matches.filter(m => m.round === round - 1);
+            for (let i = 0; i < prevRoundMatches.length; i += 2) {
+                const nextMatchIndex = Math.floor(i / 2);
+                if (roundMatches[nextMatchIndex]) {
+                    prevRoundMatches[i].nextMatch = roundMatches[nextMatchIndex]._id;
+                    if (prevRoundMatches[i + 1]) {
+                        prevRoundMatches[i + 1].nextMatch = roundMatches[nextMatchIndex]._id;
+                    }
+                }
             }
         }
 
-        // Bronze match
+        // Bronze match - losers of semifinals go here
         if (this.tournament.settings.bronzeMatch) {
-            matches.push(new Match({
+            const semifinals = matches.filter(m => m.round === rounds - 1);
+            const bronzeMatch = new Match({
                 tournament: this.tournament._id,
-                round: rounds + 1,
+                round: rounds,
                 matchNumber: matchNumber,
                 isBronzeMatch: true,
                 player1: null,
                 player2: null,
-                status: 'pending'
-            }));
+                status: 'pending',
+                nextMatch: null
+            });
+            matches.push(bronzeMatch);
+            
+            // Link semifinals to bronze match for losers
+            if (semifinals.length === 2) {
+                // This will be handled in advanceWinner
+                semifinals.forEach(sf => {
+                    sf.bronzeMatch = bronzeMatch._id;
+                });
+            }
         }
 
         return matches;
@@ -124,49 +152,71 @@ class SingleEliminationLogic extends TournamentLogic {
     async advanceWinner(match) {
         if (!match.winner) return null;
 
-        const currentRoundMatches = this.tournament.matches.filter(m => m.round === match.round);
-        const sortedMatches = currentRoundMatches.sort((a, b) => a.matchNumber - b.matchNumber);
-        const matchIndex = sortedMatches.findIndex(m => m._id.equals(match._id));
-        
-        const nextRound = match.round + 1;
-        const nextRoundMatches = this.tournament.matches.filter(m => m.round === nextRound && !m.isBronzeMatch);
-        
-        if (nextRoundMatches.length === 0) {
-            // Final - check for bronze match
-            if (this.tournament.settings.bronzeMatch) {
-                const bronzeMatch = this.tournament.matches.find(m => m.isBronzeMatch);
-                if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
-                    const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
-                    if (!bronzeMatch.player1) {
-                        bronzeMatch.player1 = loser;
-                    } else {
-                        bronzeMatch.player2 = loser;
-                    }
-                    if (bronzeMatch.player1 && bronzeMatch.player2) {
-                        bronzeMatch.status = 'scheduled';
-                    }
-                    return bronzeMatch;
+        // If this match has a nextMatch field, use it
+        if (match.nextMatch) {
+            const nextMatch = await Match.findById(match.nextMatch);
+            if (nextMatch) {
+                // Determine which slot to fill
+                const currentRoundMatches = await Match.find({
+                    tournament: this.tournament._id,
+                    round: match.round
+                }).sort({ matchNumber: 1 });
+                
+                const matchIndex = currentRoundMatches.findIndex(m => m._id.toString() === match._id.toString());
+                const isPlayer1Slot = matchIndex % 2 === 0;
+                
+                const updateData = {};
+                if (isPlayer1Slot) {
+                    updateData.player1 = match.winner;
+                } else {
+                    updateData.player2 = match.winner;
                 }
+                
+                // Check if both players now assigned
+                const currentPlayer1 = nextMatch.player1?.toString();
+                const currentPlayer2 = nextMatch.player2?.toString();
+                const newPlayer1 = isPlayer1Slot ? match.winner.toString() : currentPlayer1;
+                const newPlayer2 = isPlayer1Slot ? currentPlayer2 : match.winner.toString();
+                
+                if (newPlayer1 && newPlayer2) {
+                    updateData.status = 'scheduled';
+                }
+                
+                const updatedMatch = await Match.findByIdAndUpdate(
+                    match.nextMatch,
+                    { $set: updateData },
+                    { new: true }
+                );
+                
+                return updatedMatch;
             }
-            return null;
         }
 
-        const nextMatchIndex = Math.floor(matchIndex / 2);
-        const isPlayer1Slot = matchIndex % 2 === 0;
-        const nextMatch = nextRoundMatches.sort((a, b) => a.matchNumber - b.matchNumber)[nextMatchIndex];
-
-        if (nextMatch) {
-            if (isPlayer1Slot) {
-                nextMatch.player1 = match.winner;
-            } else {
-                nextMatch.player2 = match.winner;
+        // Fallback: Bronze match handling
+        if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
+            const bronzeMatch = await Match.findById(match.bronzeMatch);
+            if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
+                const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
+                const updateData = {};
+                
+                if (!bronzeMatch.player1) {
+                    updateData.player1 = loser;
+                } else {
+                    updateData.player2 = loser;
+                }
+                
+                if (updateData.player1 && updateData.player2) {
+                    updateData.status = 'scheduled';
+                }
+                
+                const updatedMatch = await Match.findByIdAndUpdate(
+                    match.bronzeMatch,
+                    { $set: updateData },
+                    { new: true }
+                );
+                
+                return updatedMatch;
             }
-            
-            if (nextMatch.player1 && nextMatch.player2) {
-                nextMatch.status = 'scheduled';
-            }
-            
-            return nextMatch;
         }
 
         return null;
