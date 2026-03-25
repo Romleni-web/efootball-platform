@@ -338,6 +338,30 @@ router.get('/check/:matchId', async (req, res) => {
         status: match.status
     });
 });
+// Add winner to final manually
+router.post('/add-to-final/:finalMatchId/:winnerId', auth, async (req, res) => {
+    try {
+        const finalMatch = await Match.findById(req.params.finalMatchId);
+        
+        if (!finalMatch.player1) {
+            await Match.findByIdAndUpdate(req.params.finalMatchId, {
+                player1: req.params.winnerId,
+                status: finalMatch.player2 ? 'scheduled' : 'pending'
+            });
+            return res.json({ message: 'Added winner to player1 slot' });
+        } else if (!finalMatch.player2) {
+            await Match.findByIdAndUpdate(req.params.finalMatchId, {
+                player2: req.params.winnerId,
+                status: finalMatch.player1 ? 'scheduled' : 'pending'
+            });
+            return res.json({ message: 'Added winner to player2 slot' });
+        } else {
+            return res.json({ message: 'Both slots already filled' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 // Quick fix via API
 router.post('/quick-fix/:matchId/:nextMatchId', auth, async (req, res) => {
     await Match.findByIdAndUpdate(req.params.matchId, {
