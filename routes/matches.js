@@ -325,6 +325,19 @@ if (process.env.NODE_ENV !== 'production') {
         }
     });
 }
+// Public check - no auth needed
+router.get('/check/:matchId', async (req, res) => {
+    const match = await Match.findById(req.params.matchId)
+        .populate('player1', 'username')
+        .populate('player2', 'username');
+    res.json({
+        id: match._id,
+        round: match.round,
+        player1: match.player1?.username || null,
+        player2: match.player2?.username || null,
+        status: match.status
+    });
+});
 // Quick fix via API
 router.post('/quick-fix/:matchId/:nextMatchId', auth, async (req, res) => {
     await Match.findByIdAndUpdate(req.params.matchId, {
