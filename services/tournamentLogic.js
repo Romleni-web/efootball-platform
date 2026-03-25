@@ -57,169 +57,204 @@ class SingleEliminationLogic extends TournamentLogic {
         const byes = bracketSize - numPlayers;
         const rounds = Math.log2(bracketSize);
         
-        const matches = [];
+        const matchData = []; // Collect plain objects first
         let matchNumber = 1;
 
-        // Round 1 with byes
-        const round1Matches = [];
+        // Round 1 with byes  
         let playerIndex = 0;
-        
         for (let i = 0; i < bracketSize / 2; i++) {
-            let player1, player2;
-            
-            if (i < byes) {
-                player1 = shuffled[playerIndex++];
-                player2 = null;
-            } else {
-                player1 = shuffled[playerIndex++];
-                player2 = shuffled[playerIndex++];
-            }
+            let player1 = i < byes ? shuffled[playerIndex++] : shuffled[playerIndex++];
+            let player2 = i < byes ? null : shuffled[playerIndex++];
 
-            const match = new Match({
+            matchData.push({
                 tournament: this.tournament._id,
                 round: 1,
                 matchNumber: matchNumber++,
                 player1: player1?.user || null,
                 player2: player2?.user || null,
-                status: player2 ? 'scheduled' : 'completed',
-                winner: player2 ? null : (player1 ? player1.user : null),
-                nextMatch: null // Will be set later
+                status: player2 ? 'scheduled' : 'bye',
+                winner: player2 ? null : player1?.user || null
             });
-
-            round1Matches.push(match);
-            matches.push(match);
         }
 
-        // Subsequent rounds
+        // Subsequent rounds (placeholder matches)
         for (let round = 2; round <= rounds; round++) {
             const matchesInRound = bracketSize / Math.pow(2, round);
-            const roundMatches = [];
-            
             for (let i = 0; i < matchesInRound; i++) {
-                const match = new Match({
+                matchData.push({
                     tournament: this.tournament._id,
                     round: round,
                     matchNumber: matchNumber++,
                     player1: null,
                     player2: null,
-                    status: 'pending',
-                    nextMatch: null // Will be set later
+                    status: 'pending'
                 });
-                roundMatches.push(match);
-                matches.push(match);
-            }
-            
-            // Link previous round matches to this round
-            const prevRoundMatches = matches.filter(m => m.round === round - 1);
-            for (let i = 0; i < prevRoundMatches.length; i += 2) {
-                const nextMatchIndex = Math.floor(i / 2);
-                if (roundMatches[nextMatchIndex]) {
-                    prevRoundMatches[i].nextMatch = roundMatches[nextMatchIndex]._id;
-                    if (prevRoundMatches[i + 1]) {
-                        prevRoundMatches[i + 1].nextMatch = roundMatches[nextMatchIndex]._id;
-                    }
-                }
             }
         }
 
-        // Bronze match - losers of semifinals go here
+        // Bronze match
         if (this.tournament.settings.bronzeMatch) {
-            const semifinals = matches.filter(m => m.round === rounds - 1);
-            const bronzeMatch = new Match({
+            matchData.push({
                 tournament: this.tournament._id,
                 round: rounds,
                 matchNumber: matchNumber,
                 isBronzeMatch: true,
                 player1: null,
                 player2: null,
-                status: 'pending',
-                nextMatch: null
+                status: 'pending'
             });
-            matches.push(bronzeMatch);
+        }
+
+        // 1️⃣ BULK SAVE ALL MATCHES FIRST
+        const savedMatches = await Match.insertMany(matchData);
+        console.log(`✅ Generated ${savedMatches.length} matches`);
+
+        // 2️⃣ NOW LINK nextMatch REFERENCES PROPERLY
+        const round1End = bracketSize / 2;
+        for (let round = 2; round <= rounds; round++) {
+            const prevRoundStartIdx = round1End * (1 - 1/Math.pow(2, round-1));
+            const prevRoundEndIdx = round1End * (1 - 1/Math.pow(2, round));
             
-            // Link semifinals to bronze match for losers
-            if (semifinals.length === 2) {
-                // This will be handled in advanceWinner
-                semifinals.forEach(sf => {
-                    sf.bronzeMatch = bronzeMatch._id;
-                });
+            const prevRoundMatches = savedMatches.slice(prevRoundStartIdx, prevRoundEndIdx);
+            const thisRoundMatches = savedMatches.slice(
+                prevRoundEndIdx, 
+                prevRoundEndIdx + prevRoundMatches.length / 2
+            );
+
+            // Link pairs to next round match
+            for (let i = 0; i < prevRoundMatches.length; i += 2) {
+                const nextMatch = thisRoundMatches[Math.floor(i / 2)];
+                if (nextMatch && prevRoundMatches[i]) {
+                    prevRoundMatches[i].nextMatch = nextMatch._id;
+                }
+                if (nextMatch && prevRoundMatches[i + 1]) {
+                    prevRoundMatches[i + 1].nextMatch = nextMatch._id;
+                }
             }
         }
 
-        return matches;
+        // 3️⃣ UPDATE MATCHES WITH LINKS
+        const updatePromises = savedMatches.map((match, idx) => 
+            Match.findByIdAndUpdate(match._id, {
+                $set: {
+                    nextMatch: match.nextMatch || null
+                }
+            }, { new: true })
+        );
+        await Promise.all(updatePromises);
+
+        return savedMatches;
     }
 
     async advanceWinner(match) {
         if (!match.winner) return null;
 
-        // If this match has a nextMatch field, use it
+        console.log(`🔄 Advancing winner ${match.winner} from round ${match.round} match ${match.matchNumber}`);
+
+        // 1️⃣ PRIMARY: Use pre-linked nextMatch
         if (match.nextMatch) {
-            const nextMatch = await Match.findById(match.nextMatch);
+            const nextMatch = await Match.findById(match.nextMatch)
+                .populate('player1 player2');
+            
             if (nextMatch) {
-                // Determine which slot to fill
-                const currentRoundMatches = await Match.find({
+                // Smart slot detection - left winner → player1 slot, etc.
+                const tournamentMatches = await Match.find({
                     tournament: this.tournament._id,
                     round: match.round
                 }).sort({ matchNumber: 1 });
                 
-                const matchIndex = currentRoundMatches.findIndex(m => m._id.toString() === match._id.toString());
-                const isPlayer1Slot = matchIndex % 2 === 0;
+                const matchIdx = tournamentMatches.findIndex(m => m._id.equals(match._id));
+                const slotIdx = Math.floor(matchIdx / 2) * 2 === matchIdx ? 0 : 1; // 0=left, 1=right
                 
-                const updateData = {};
-                if (isPlayer1Slot) {
-                    updateData.player1 = match.winner;
-                } else {
-                    updateData.player2 = match.winner;
-                }
-                
-                // Check if both players now assigned
-                const currentPlayer1 = nextMatch.player1?.toString();
-                const currentPlayer2 = nextMatch.player2?.toString();
-                const newPlayer1 = isPlayer1Slot ? match.winner.toString() : currentPlayer1;
-                const newPlayer2 = isPlayer1Slot ? currentPlayer2 : match.winner.toString();
-                
-                if (newPlayer1 && newPlayer2) {
+                const updateData = {
+                    [`player${slotIdx + 1}`]: match.winner
+                };
+
+                // Check if next match is now ready
+                if (nextMatch.player1 && nextMatch.player2) {
                     updateData.status = 'scheduled';
+                    console.log(`✅ Next match ${nextMatch.matchNumber} ready: ${nextMatch.player1.username || nextMatch.player1} vs ${nextMatch.player2.username || nextMatch.player2}`);
                 }
-                
-                const updatedMatch = await Match.findByIdAndUpdate(
-                    match.nextMatch,
-                    { $set: updateData },
+
+                const updated = await Match.findByIdAndUpdate(
+                    nextMatch._id, 
+                    { $set: updateData }, 
                     { new: true }
-                );
+                ).populate('player1 player2');
                 
-                return updatedMatch;
+                console.log('✅ Advanced via nextMatch link');
+                return updated;
             }
         }
 
-        // Fallback: Bronze match handling
-        if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
-            const bronzeMatch = await Match.findById(match.bronzeMatch);
-            if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
+        // 2️⃣ FALLBACK: Find next available slot by round progression
+        const nextRound = match.round + 1;
+        const nextRoundMatches = await Match.find({
+            tournament: this.tournament._id,
+            round: nextRound,
+            $or: [
+                { player1: null },
+                { player2: null }
+            ]
+        }).sort({ matchNumber: 1 }).limit(1);
+
+        if (nextRoundMatches.length > 0) {
+            const nextMatch = nextRoundMatches[0];
+            const updateData = {};
+            
+            if (!nextMatch.player1) {
+                updateData.player1 = match.winner;
+            } else if (!nextMatch.player2) {
+                updateData.player2 = match.winner;
+            }
+
+            if (nextMatch.player1 && nextMatch.player2) {
+                updateData.status = 'scheduled';
+            }
+
+            const updated = await Match.findByIdAndUpdate(
+                nextMatch._id,
+                { $set: updateData },
+                { new: true }
+            ).populate('player1 player2');
+
+            console.log(`✅ Advanced via fallback to round ${nextRound} match ${nextMatch.matchNumber}`);
+            return updated;
+        }
+
+        // 3️⃣ BRONZE MATCH
+        if (this.tournament.settings.bronzeMatch) {
+            const bronzeMatches = await Match.find({
+                tournament: this.tournament._id,
+                isBronzeMatch: true,
+                $or: [{ player1: null }, { player2: null }]
+            });
+
+            if (bronzeMatches.length > 0) {
+                const bronzeMatch = bronzeMatches[0];
                 const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
+                
                 const updateData = {};
-                
-                if (!bronzeMatch.player1) {
-                    updateData.player1 = loser;
-                } else {
-                    updateData.player2 = loser;
-                }
-                
-                if (updateData.player1 && updateData.player2) {
+                if (!bronzeMatch.player1) updateData.player1 = loser;
+                else if (!bronzeMatch.player2) updateData.player2 = loser;
+
+                if (bronzeMatch.player1 && bronzeMatch.player2) {
                     updateData.status = 'scheduled';
                 }
-                
-                const updatedMatch = await Match.findByIdAndUpdate(
-                    match.bronzeMatch,
+
+                const updated = await Match.findByIdAndUpdate(
+                    bronzeMatch._id,
                     { $set: updateData },
                     { new: true }
                 );
                 
-                return updatedMatch;
+                console.log(`🥉 Sent loser to bronze match`);
+                return updated;
             }
         }
 
-        return null;
+        console.log('🏁 No next match - tournament final or complete');
+        return null; // Tournament final reached
     }
 
     getFinalRankings(matches) {
