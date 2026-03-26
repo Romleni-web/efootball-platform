@@ -150,77 +150,74 @@ class SingleEliminationLogic extends TournamentLogic {
     }
 
     async advanceWinner(match) {
-        if (!match.winner) return null;
+    if (!match.winner) return null;
 
-        // If this match has a nextMatch field, use it
-        if (match.nextMatch) {
-            const nextMatch = await Match.findById(match.nextMatch);
-            if (nextMatch) {
-                // Determine which slot to fill
-                const currentRoundMatches = await Match.find({
-                    tournament: this.tournament._id,
-                    round: match.round
-                }).sort({ matchNumber: 1 });
-                
-                const matchIndex = currentRoundMatches.findIndex(m => m._id.toString() === match._id.toString());
-                const isPlayer1Slot = matchIndex % 2 === 0;
-                
-                const updateData = {};
-                if (isPlayer1Slot) {
-                    updateData.player1 = match.winner;
-                } else {
-                    updateData.player2 = match.winner;
-                }
-                
-                // Check if both players now assigned
-                const currentPlayer1 = nextMatch.player1?.toString();
-                const currentPlayer2 = nextMatch.player2?.toString();
-                const newPlayer1 = isPlayer1Slot ? match.winner.toString() : currentPlayer1;
-                const newPlayer2 = isPlayer1Slot ? currentPlayer2 : match.winner.toString();
-                
-                if (newPlayer1 && newPlayer2) {
-                    updateData.status = 'scheduled';
-                }
-                
-                const updatedMatch = await Match.findByIdAndUpdate(
-                    match.nextMatch,
-                    { $set: updateData },
-                    { new: true }
-                );
-                
-                return updatedMatch;
+    // If this match has a nextMatch field, use it
+    if (match.nextMatch) {
+        const nextMatch = await Match.findById(match.nextMatch);
+        if (nextMatch) {
+            // Determine which slot to fill based on matchNumber (not array index)
+            // In single elimination: odd matchNumbers go to player1, even go to player2 of next match
+            // Match 1 & 2 → feed into next round's Match X (1 goes to P1, 2 goes to P2)
+            // Match 3 & 4 → feed into next round's Match Y (3 goes to P1, 4 goes to P2)
+            const isPlayer1Slot = match.matchNumber % 2 !== 0; // Odd match numbers = player1 slot
+            
+            const updateData = {};
+            if (isPlayer1Slot) {
+                updateData.player1 = match.winner;
+            } else {
+                updateData.player2 = match.winner;
             }
-        }
-
-        // Fallback: Bronze match handling
-        if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
-            const bronzeMatch = await Match.findById(match.bronzeMatch);
-            if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
-                const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
-                const updateData = {};
-                
-                if (!bronzeMatch.player1) {
-                    updateData.player1 = loser;
-                } else {
-                    updateData.player2 = loser;
-                }
-                
-                if (updateData.player1 && updateData.player2) {
-                    updateData.status = 'scheduled';
-                }
-                
-                const updatedMatch = await Match.findByIdAndUpdate(
-                    match.bronzeMatch,
-                    { $set: updateData },
-                    { new: true }
-                );
-                
-                return updatedMatch;
+            
+            // Check if both players now assigned
+            const currentPlayer1 = nextMatch.player1?.toString();
+            const currentPlayer2 = nextMatch.player2?.toString();
+            const newPlayer1 = isPlayer1Slot ? match.winner.toString() : currentPlayer1;
+            const newPlayer2 = isPlayer1Slot ? currentPlayer2 : match.winner.toString();
+            
+            if (newPlayer1 && newPlayer2) {
+                updateData.status = 'scheduled';
             }
+            
+            const updatedMatch = await Match.findByIdAndUpdate(
+                match.nextMatch,
+                { $set: updateData },
+                { new: true }
+            );
+            
+            return updatedMatch;
         }
-
-        return null;
     }
+
+    // Bronze match handling remains the same...
+    if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
+        const bronzeMatch = await Match.findById(match.bronzeMatch);
+        if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
+            const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
+            const updateData = {};
+            
+            if (!bronzeMatch.player1) {
+                updateData.player1 = loser;
+            } else {
+                updateData.player2 = loser;
+            }
+            
+            if (updateData.player1 && updateData.player2) {
+                updateData.status = 'scheduled';
+            }
+            
+            const updatedMatch = await Match.findByIdAndUpdate(
+                match.bronzeMatch,
+                { $set: updateData },
+                { new: true }
+            );
+            
+            return updatedMatch;
+        }
+    }
+
+    return null;
+}
 
     getFinalRankings(matches) {
         const rankings = [];

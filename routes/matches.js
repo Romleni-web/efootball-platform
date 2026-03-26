@@ -173,35 +173,20 @@ router.post('/:id/result', auth, require('../middleware/upload').single('screens
                 });
                 
                 // Get the next match info from logic
-                const nextMatchInfo = await logic.advanceWinner(completedMatch);
-                
-                if (nextMatchInfo && nextMatchInfo._id) {
-                    console.log('✅ Winner should advance to match:', nextMatchInfo._id.toString());
+               const nextMatchInfo = await logic.advanceWinner(completedMatch);
 
-                    const updatedNextMatch = await Match.findByIdAndUpdate(
-                        nextMatchInfo._id,
-                        { 
-                            $set: {
-                                player1: nextMatchInfo.player1 || null,
-                                player2: nextMatchInfo.player2 || null,
-                                status: nextMatchInfo.status || 'pending'
-                            }
-                        },
-                        { new: true }
-                    );
-                    
-                    if (updatedNextMatch) {
-                        console.log('✅ Next match updated successfully:', {
-                            player1: updatedNextMatch.player1?.toString(),
-                            player2: updatedNextMatch.player2?.toString(),
-                            status: updatedNextMatch.status
-                        });
-                    } else {
-                        console.log('❌ Failed to update next match');
-                    }
-                } else {
-                    console.log('ℹ️ No next match to advance to (final match or tournament complete)');
-                }
+if (nextMatchInfo && nextMatchInfo._id) {
+    console.log('✅ Winner advanced to next match:', nextMatchInfo._id.toString());
+    // The logic already updated the match, just fetch fresh data if needed
+    const verifyMatch = await Match.findById(nextMatchInfo._id);
+    console.log('Next match state:', {
+        player1: verifyMatch.player1?.toString(),
+        player2: verifyMatch.player2?.toString(),
+        status: verifyMatch.status
+    });
+} else {
+    console.log('ℹ️ No next match to advance to (final match or tournament complete)');
+}
             }
 
             if (!completedMatch) {
@@ -336,16 +321,6 @@ router.get('/check/:matchId', async (req, res) => {
         player1: match.player1?.username || null,
         player2: match.player2?.username || null,
         status: match.status
-    });
-});
-router.get('/public/:matchId', async (req, res) => {
-    const match = await Match.findById(req.params.matchId)
-        .populate('winner', 'username');
-    res.json({
-        winner: match.winner?.username,
-        winnerId: match.winner?._id,
-        score1: match.score1,
-        score2: match.score2
     });
 });
 // Add winner to final manually
