@@ -338,6 +338,16 @@ router.get('/check/:matchId', async (req, res) => {
         status: match.status
     });
 });
+router.get('/public/:matchId', async (req, res) => {
+    const match = await Match.findById(req.params.matchId)
+        .populate('winner', 'username');
+    res.json({
+        winner: match.winner?.username,
+        winnerId: match.winner?._id,
+        score1: match.score1,
+        score2: match.score2
+    });
+});
 // Add winner to final manually
 router.post('/add-to-final/:finalMatchId/:winnerId', auth, async (req, res) => {
     try {
