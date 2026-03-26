@@ -362,6 +362,12 @@ router.post('/add-to-final/:finalMatchId/:winnerId', auth, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+router.post('/quick-status-fix/:matchId', auth, async (req, res) => {
+    const match = await Match.findById(req.params.matchId);
+    const newStatus = match.player1 && match.player2 ? 'scheduled' : 'pending';
+    await Match.findByIdAndUpdate(req.params.matchId, { status: newStatus });
+    res.json({ message: 'Status updated to ' + newStatus });
+});
 // Quick fix via API
 router.post('/quick-fix/:matchId/:nextMatchId', auth, async (req, res) => {
     await Match.findByIdAndUpdate(req.params.matchId, {
