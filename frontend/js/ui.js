@@ -328,49 +328,53 @@ const UI = {
 
     // BRACKET RENDERING FUNCTIONS
     renderBracket(bracketData) {
-        if (!bracketData || bracketData.length === 0) {
-            return '<div class="no-bracket">No bracket available yet</div>';
-        }
+    if (!bracketData || !bracketData.rounds) {
+        return '<div class="no-bracket">No bracket available</div>';
+    }
 
-        let html = '<div class="bracket-container">';
+    let html = '<div class="bracket-container">';
+    
+    bracketData.rounds.forEach(round => {
+        html += `
+            <div class="bracket-round">
+                <div class="round-title">${round.title || 'Round ' + round.round}</div>
+                <div class="round-matches">
+        `;
         
-        bracketData.forEach(round => {
+        round.matches.forEach(match => {
+            // ✅ FIXED: Properly extract player names
+            const p1Name = match.player1?.username || 
+                           (typeof match.player1 === 'string' ? 'Player' : 'TBD');
+            const p2Name = match.player2?.username || 
+                           (typeof match.player2 === 'string' ? 'Player' : 'TBD');
+            
+            const isCompleted = match.status === 'completed';
+            const hasWinner = match.winner;
+            
             html += `
-                <div class="bracket-round">
-                    <div class="round-title">Round ${round.round || '?'}</div>
-                    <div class="round-matches">
-            `;
-            
-            round.matches?.forEach(match => {
-                const player1Name = match?.player1?.username || 'TBD';
-                const player2Name = match?.player2?.username || 'TBD';
-                const winner = match?.winner;
-                
-                const p1Class = winner && winner._id === match?.player1?._id ? 'winner' : '';
-                const p2Class = winner && winner._id === match?.player2?._id ? 'winner' : '';
-                
-                html += `
-                    <div class="bracket-match">
-                        <div class="match-players">
-                            <div class="player ${p1Class}">${player1Name}</div>
-                            <div class="vs">VS</div>
-                            <div class="player ${p2Class}">${player2Name}</div>
+                <div class="bracket-match" data-match-id="${match._id}">
+                    <div class="match-players">
+                        <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''}">
+                            ${p1Name}
                         </div>
-                        ${match?.status === 'completed' ? `
-                            <div class="match-result">
-                                ${match.score1 !== null ? match.score1 : '-'} - ${match.score2 !== null ? match.score2 : '-'}
-                            </div>
-                        ` : `<div class="match-status">${match?.status || 'pending'}</div>`}
+                        <div class="vs">VS</div>
+                        <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''}">
+                            ${p2Name}
+                        </div>
                     </div>
-                `;
-            });
-            
-            html += '</div></div>';
+                    ${isCompleted && match.score1 !== null ? `
+                        <div class="match-result">${match.score1} - ${match.score2}</div>
+                    ` : ''}
+                </div>
+            `;
         });
         
-        html += '</div>';
-        return html;
-    },
+        html += '</div></div>';
+    });
+    
+    html += '</div>';
+    return html;
+},
 
     // NEW: Render Standings for Round-Based Formats
     renderStandings(standingsData) {
