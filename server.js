@@ -115,3 +115,16 @@ process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err);
     process.exit(1);
 });
+
+// Add this BEFORE loading routes
+const originalPost = express.Router.prototype.post;
+express.Router.prototype.post = function(path, ...handlers) {
+    handlers.forEach((handler, i) => {
+        if (typeof handler !== 'function') {
+            console.error(`❌ Invalid handler at position ${i} for POST ${path}`);
+            console.error('   Type:', typeof handler);
+            console.error('   Value:', handler);
+        }
+    });
+    return originalPost.call(this, path, ...handlers);
+};
