@@ -1,3 +1,4 @@
+// services/tournamentLogic.js - COMPLETE FIXED VERSION
 const Match = require('../models/Match');
 
 class TournamentLogic {
@@ -83,7 +84,7 @@ class SingleEliminationLogic extends TournamentLogic {
                 player2: player2?.user || null,
                 status: player2 ? 'scheduled' : 'completed',
                 winner: player2 ? null : (player1 ? player1.user : null),
-                nextMatch: null // Will be set later
+                nextMatch: null
             });
 
             round1Matches.push(match);
@@ -103,7 +104,7 @@ class SingleEliminationLogic extends TournamentLogic {
                     player1: null,
                     player2: null,
                     status: 'pending',
-                    nextMatch: null // Will be set later
+                    nextMatch: null
                 });
                 roundMatches.push(match);
                 matches.push(match);
@@ -137,9 +138,7 @@ class SingleEliminationLogic extends TournamentLogic {
             });
             matches.push(bronzeMatch);
             
-            // Link semifinals to bronze match for losers
             if (semifinals.length === 2) {
-                // This will be handled in advanceWinner
                 semifinals.forEach(sf => {
                     sf.bronzeMatch = bronzeMatch._id;
                 });
@@ -150,74 +149,67 @@ class SingleEliminationLogic extends TournamentLogic {
     }
 
     async advanceWinner(match) {
-    if (!match.winner) return null;
+        if (!match.winner) return null;
 
-    // If this match has a nextMatch field, use it
-    if (match.nextMatch) {
+        // Handle bronze match for losers
+        if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
+            return this._advanceToBronze(match);
+        }
+
+        if (!match.nextMatch) return null;
+
         const nextMatch = await Match.findById(match.nextMatch);
-        if (nextMatch) {
-            // Determine which slot to fill based on matchNumber (not array index)
-            // In single elimination: odd matchNumbers go to player1, even go to player2 of next match
-            // Match 1 & 2 → feed into next round's Match X (1 goes to P1, 2 goes to P2)
-            // Match 3 & 4 → feed into next round's Match Y (3 goes to P1, 4 goes to P2)
-            const isPlayer1Slot = match.matchNumber % 2 !== 0; // Odd match numbers = player1 slot
-            
-            const updateData = {};
-            if (isPlayer1Slot) {
-                updateData.player1 = match.winner;
-            } else {
-                updateData.player2 = match.winner;
-            }
-            
-            // Check if both players now assigned
-            const currentPlayer1 = nextMatch.player1?.toString();
-            const currentPlayer2 = nextMatch.player2?.toString();
-            const newPlayer1 = isPlayer1Slot ? match.winner.toString() : currentPlayer1;
-            const newPlayer2 = isPlayer1Slot ? currentPlayer2 : match.winner.toString();
-            
-            if (newPlayer1 && newPlayer2) {
-                updateData.status = 'scheduled';
-            }
-            
-            const updatedMatch = await Match.findByIdAndUpdate(
-                match.nextMatch,
-                { $set: updateData },
-                { new: true }
-            );
-            
-            return updatedMatch;
+        if (!nextMatch) return null;
+
+        // Determine slot: odd matchNumbers → player1, even → player2
+        const isPlayer1Slot = match.matchNumber % 2 !== 0;
+        
+        const updateData = {};
+        if (isPlayer1Slot) {
+            updateData.player1 = match.winner;
+        } else {
+            updateData.player2 = match.winner;
         }
+        
+        const willHavePlayer1 = isPlayer1Slot ? match.winner : nextMatch.player1;
+        const willHavePlayer2 = isPlayer1Slot ? nextMatch.player2 : match.winner;
+        
+        if (willHavePlayer1 && willHavePlayer2) {
+            updateData.status = 'scheduled';
+        }
+        
+        return await Match.findByIdAndUpdate(
+            match.nextMatch,
+            { $set: updateData },
+            { new: true }
+        );
     }
 
-    // Bronze match handling remains the same...
-    if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
+    async _advanceToBronze(match) {
         const bronzeMatch = await Match.findById(match.bronzeMatch);
-        if (bronzeMatch && (!bronzeMatch.player1 || !bronzeMatch.player2)) {
-            const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
-            const updateData = {};
-            
-            if (!bronzeMatch.player1) {
-                updateData.player1 = loser;
-            } else {
-                updateData.player2 = loser;
-            }
-            
-            if (updateData.player1 && updateData.player2) {
-                updateData.status = 'scheduled';
-            }
-            
-            const updatedMatch = await Match.findByIdAndUpdate(
-                match.bronzeMatch,
-                { $set: updateData },
-                { new: true }
-            );
-            
-            return updatedMatch;
-        }
-    }
+        if (!bronzeMatch || bronzeMatch.status === 'completed') return null;
 
-    return null;
-}
+        const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
+        
+        const updateData = {};
+        if (!bronzeMatch.player1) {
+            updateData.player1 = loser;
+        } else if (!bronzeMatch.player2) {
+            updateData.player2 = loser;
+        } else {
+            return null;
+        }
+        
+        if (updateData.player1 && updateData.player2) {
+            updateData.status = 'scheduled';
+        }
+        
+        return await Match.findByIdAndUpdate(
+            match.bronzeMatch,
+            { $set: updateData },
+            { new: true }
+        );
+    }
 
     getFinalRankings(matches) {
         const rankings = [];
@@ -511,82 +503,358 @@ class SwissLogic extends TournamentLogic {
     }
 }
 
-// ==================== DOUBLE ELIMINATION ====================
+// ==================== DOUBLE ELIMINATION (COMPLETE) ====================
 class DoubleEliminationLogic extends TournamentLogic {
     async generateBracket(players) {
         const matches = [];
         const numPlayers = players.length;
         const winnersRounds = Math.ceil(Math.log2(numPlayers));
         
-        // Winners bracket
+        // Generate Winners Bracket
         const winnersLogic = new SingleEliminationLogic({
             ...this.tournament,
             settings: { ...this.tournament.settings, bronzeMatch: false }
         });
         const winnersMatches = await winnersLogic.generateBracket(players);
-        winnersMatches.forEach(m => m.bracket = 'winners');
+        winnersMatches.forEach(m => {
+            m.bracket = 'winners';
+            m.losersNextMatch = null;
+        });
         matches.push(...winnersMatches);
 
-        // Losers bracket
+        // Generate Losers Bracket
+        const losersMatches = [];
         let losersMatchNum = 1000;
-        for (let round = 1; round < winnersRounds * 2 - 1; round++) {
-            const numMatches = Math.max(1, Math.floor(Math.pow(2, winnersRounds - 1 - Math.floor((round + 1) / 2))));
+        
+        // Losers bracket rounds
+        for (let round = 1; round <= (winnersRounds * 2) - 2; round++) {
+            const numMatches = this._getLosersRoundMatchCount(round, winnersRounds);
             for (let i = 0; i < numMatches; i++) {
-                matches.push(new Match({
+                const match = new Match({
                     tournament: this.tournament._id,
                     round: round,
                     matchNumber: losersMatchNum++,
                     bracket: 'losers',
                     player1: null,
                     player2: null,
-                    status: 'pending'
-                }));
+                    status: 'pending',
+                    nextMatch: null,
+                    sourceMatches: []
+                });
+                losersMatches.push(match);
             }
         }
+        
+        // Link losers bracket
+        this._linkLosersBracket(losersMatches);
+        
+        // Link winners to losers
+        this._linkWinnersToLosers(matches, losersMatches, winnersRounds);
+        
+        matches.push(...losersMatches);
 
         // Grand Finals
-        matches.push(new Match({
+        const grandFinals = new Match({
             tournament: this.tournament._id,
             round: 999,
             matchNumber: 9999,
             bracket: 'grand_finals',
             player1: null,
             player2: null,
+            status: 'pending',
+            resetMatch: null
+        });
+        matches.push(grandFinals);
+
+        // Grand Finals Reset
+        const grandFinalsReset = new Match({
+            tournament: this.tournament._id,
+            round: 999,
+            matchNumber: 10000,
+            bracket: 'grand_finals_reset',
+            player1: null,
+            player2: null,
             status: 'pending'
-        }));
+        });
+        matches.push(grandFinalsReset);
+
+        grandFinals.resetMatch = grandFinalsReset._id;
 
         return matches;
+    }
+
+    _getLosersRoundMatchCount(round, winnersRounds) {
+        const effectiveRound = Math.ceil(round / 2);
+        return Math.max(1, Math.pow(2, winnersRounds - effectiveRound - 1));
+    }
+
+    _linkLosersBracket(losersMatches) {
+        const byRound = {};
+        losersMatches.forEach(m => {
+            if (!byRound[m.round]) byRound[m.round] = [];
+            byRound[m.round].push(m);
+        });
+
+        const rounds = Object.keys(byRound).sort((a, b) => a - b);
+        
+        for (let i = 0; i < rounds.length - 1; i++) {
+            const current = byRound[rounds[i]];
+            const next = byRound[rounds[i + 1]];
+            
+            for (let j = 0; j < current.length; j += 2) {
+                const nextIdx = Math.floor(j / 2);
+                if (next[nextIdx]) {
+                    current[j].nextMatch = next[nextIdx]._id;
+                    if (current[j + 1]) {
+                        current[j + 1].nextMatch = next[nextIdx]._id;
+                    }
+                }
+            }
+        }
+
+        const lastRound = byRound[rounds[rounds.length - 1]];
+        if (lastRound && lastRound.length === 1) {
+            lastRound[0].nextMatch = 'grand_finals';
+        }
+    }
+
+    _linkWinnersToLosers(winnersMatches, losersMatches, winnersRounds) {
+        const r1Winners = winnersMatches.filter(m => m.round === 1);
+        const r1Losers = losersMatches.filter(m => m.round === 1);
+        
+        for (let i = 0; i < r1Winners.length; i++) {
+            const wm = r1Winners[i];
+            const lm = r1Losers[Math.floor(i / 2)];
+            if (!lm.sourceMatches) lm.sourceMatches = [];
+            lm.sourceMatches.push({
+                matchId: wm._id,
+                slot: i % 2 === 0 ? 'player1' : 'player2',
+                takesLoser: true
+            });
+            wm.losersNextMatch = lm._id;
+        }
+
+        for (let wRound = 2; wRound <= winnersRounds; wRound++) {
+            const wMatches = winnersMatches.filter(m => m.round === wRound);
+            const lRound = (wRound - 1) * 2;
+            const lMatches = losersMatches.filter(m => m.round === lRound);
+            
+            for (let i = 0; i < wMatches.length; i++) {
+                const wm = wMatches[i];
+                const lmIdx = Math.floor(i / (wRound === 2 ? 1 : 2));
+                if (lMatches[lmIdx]) {
+                    wm.losersNextMatch = lMatches[lmIdx]._id;
+                    if (!lMatches[lmIdx].sourceMatches) lMatches[lmIdx].sourceMatches = [];
+                    lMatches[lmIdx].sourceMatches.push({
+                        matchId: wm._id,
+                        takesLoser: true
+                    });
+                }
+            }
+        }
     }
 
     async advanceWinner(match) {
         if (!match.winner) return null;
 
-        // Keep tournament progress moving by at least advancing the winners bracket.
-        // This avoids tournaments getting stuck while full losers-bracket logic is pending.
         if (match.bracket === 'winners' || !match.bracket) {
-            const winnersMatches = this.tournament.matches.filter(m => m.bracket === 'winners');
-            const winnersTournamentView = {
-                ...this.tournament,
-                matches: winnersMatches,
-                settings: { ...this.tournament.settings, bronzeMatch: false }
-            };
-            const winnersLogic = new SingleEliminationLogic(winnersTournamentView);
-            const nextWinnersMatch = await winnersLogic.advanceWinner(match);
-            if (nextWinnersMatch) return nextWinnersMatch;
+            return await this._advanceWinnersBracket(match);
+        }
+        
+        if (match.bracket === 'losers') {
+            return await this._advanceLosersBracket(match);
+        }
+        
+        if (match.bracket === 'grand_finals') {
+            return await this._handleGrandFinals(match);
+        }
 
-            // Winners bracket final completed -> seed grand finals player1.
-            const grandFinal = this.tournament.matches.find(m => m.bracket === 'grand_finals');
-            if (grandFinal && !grandFinal.player1) {
-                grandFinal.player1 = match.winner;
-                if (grandFinal.player1 && grandFinal.player2) {
-                    grandFinal.status = 'scheduled';
+        return null;
+    }
+
+    async _advanceWinnersBracket(match) {
+        const winnersMatches = this.tournament.matches.filter(m => m.bracket === 'winners');
+        const winnersView = {
+            ...this.tournament,
+            matches: winnersMatches,
+            settings: { ...this.tournament.settings, bronzeMatch: false }
+        };
+        const winnersLogic = new SingleEliminationLogic(winnersView);
+        
+        const nextMatch = await winnersLogic.advanceWinner(match);
+        if (nextMatch) return nextMatch;
+
+        const grandFinals = this.tournament.matches.find(m => m.bracket === 'grand_finals');
+        if (grandFinals && !grandFinals.player1) {
+            await Match.findByIdAndUpdate(grandFinals._id, {
+                $set: { player1: match.winner }
+            });
+            
+            const updated = await Match.findById(grandFinals._id);
+            if (updated.player1 && updated.player2) {
+                await Match.findByIdAndUpdate(grandFinals._id, {
+                    $set: { status: 'scheduled' }
+                });
+            }
+            return grandFinals;
+        }
+
+        return null;
+    }
+
+    async _advanceLosersBracket(match) {
+        if (match.nextMatch && match.nextMatch !== 'grand_finals') {
+            const nextMatch = await Match.findById(match.nextMatch);
+            if (!nextMatch) return null;
+
+            const isPlayer1Slot = match.matchNumber % 2 !== 0;
+            const updateData = {};
+            
+            if (isPlayer1Slot) {
+                updateData.player1 = match.winner;
+            } else {
+                updateData.player2 = match.winner;
+            }
+
+            const willHaveP1 = isPlayer1Slot ? match.winner : nextMatch.player1;
+            const willHaveP2 = isPlayer1Slot ? nextMatch.player2 : match.winner;
+            
+            if (willHaveP1 && willHaveP2) {
+                updateData.status = 'scheduled';
+            }
+
+            return await Match.findByIdAndUpdate(match.nextMatch, { $set: updateData }, { new: true });
+        }
+
+        if (match.nextMatch === 'grand_finals') {
+            const grandFinals = this.tournament.matches.find(m => m.bracket === 'grand_finals');
+            if (grandFinals && !grandFinals.player2) {
+                await Match.findByIdAndUpdate(grandFinals._id, {
+                    $set: { player2: match.winner }
+                });
+                
+                const updated = await Match.findById(grandFinals._id);
+                if (updated.player1 && updated.player2) {
+                    await Match.findByIdAndUpdate(grandFinals._id, {
+                        $set: { status: 'scheduled' }
+                    });
                 }
-                return grandFinal;
+                return grandFinals;
             }
         }
 
-        // TODO: full losers bracket routing.
         return null;
+    }
+
+    async _handleGrandFinals(match) {
+        const resetMatch = this.tournament.matches.find(m => m.bracket === 'grand_finals_reset');
+        
+        const winnersChampion = match.player1;
+        const losersChampion = match.player2;
+        
+        if (match.winner.equals(winnersChampion)) {
+            await Match.findByIdAndUpdate(match._id, {
+                $set: { status: 'completed', isTournamentComplete: true }
+            });
+            return null;
+        }
+
+        if (resetMatch && !resetMatch.player1) {
+            await Match.findByIdAndUpdate(resetMatch._id, {
+                $set: {
+                    player1: winnersChampion,
+                    player2: losersChampion,
+                    status: 'scheduled'
+                }
+            });
+            return resetMatch;
+        }
+
+        return null;
+    }
+
+    async advanceLoser(match) {
+        if (!match.winner || !match.losersNextMatch) return null;
+        
+        const loser = match.player1.equals(match.winner) ? match.player2 : match.player1;
+        const losersMatch = await Match.findById(match.losersNextMatch);
+        
+        if (!losersMatch) return null;
+
+        const sourceInfo = losersMatch.sourceMatches?.find(
+            s => s.matchId.toString() === match._id.toString()
+        );
+        
+        if (!sourceInfo) return null;
+
+        const updateData = {};
+        if (sourceInfo.slot === 'player1') {
+            updateData.player1 = loser;
+        } else {
+            updateData.player2 = loser;
+        }
+
+        const willHaveP1 = sourceInfo.slot === 'player1' ? loser : losersMatch.player1;
+        const willHaveP2 = sourceInfo.slot === 'player2' ? loser : losersMatch.player2;
+        
+        if (willHaveP1 && willHaveP2) {
+            updateData.status = 'scheduled';
+        }
+
+        return await Match.findByIdAndUpdate(match.losersNextMatch, { $set: updateData }, { new: true });
+    }
+
+    calculateStandings() {
+        const matches = this.tournament.matches;
+        const standings = [];
+        
+        const grandFinals = matches.find(m => m.bracket === 'grand_finals' && m.status === 'completed');
+        const grandFinalsReset = matches.find(m => m.bracket === 'grand_finals_reset' && m.status === 'completed');
+        
+        if (grandFinalsReset?.winner) {
+            standings.push({ rank: 1, player: grandFinalsReset.winner });
+            standings.push({ 
+                rank: 2, 
+                player: grandFinalsReset.player1.equals(grandFinalsReset.winner) 
+                    ? grandFinalsReset.player2 
+                    : grandFinalsReset.player1 
+            });
+        } else if (grandFinals?.winner) {
+            standings.push({ rank: 1, player: grandFinals.winner });
+            standings.push({ 
+                rank: 2, 
+                player: grandFinals.player1.equals(grandFinals.winner) 
+                    ? grandFinals.player2 
+                    : grandFinals.player1 
+            });
+        }
+
+        const losersFinals = matches
+            .filter(m => m.bracket === 'losers')
+            .sort((a, b) => b.round - a.round)[0];
+            
+        if (losersFinals?.winner && losersFinals.status === 'completed') {
+            const third = losersFinals.player1.equals(losersFinals.winner) 
+                ? losersFinals.player2 
+                : losersFinals.player1;
+            standings.push({ rank: 3, player: third });
+        }
+
+        return standings;
+    }
+
+    getFinalRankings(matches) {
+        return this.calculateStandings();
+    }
+
+    isTournamentComplete() {
+        const grandFinals = this.tournament.matches.find(m => m.bracket === 'grand_finals');
+        const reset = this.tournament.matches.find(m => m.bracket === 'grand_finals_reset');
+        
+        if (reset && reset.status === 'completed') return true;
+        if (grandFinals && grandFinals.status === 'completed' && !reset?.player1) return true;
+        
+        return false;
     }
 }
 
@@ -612,6 +880,7 @@ const TournamentLogicFactory = {
 
 module.exports = {
     TournamentLogicFactory,
+    TournamentLogic,
     SingleEliminationLogic,
     RoundRobinLogic,
     SwissLogic,

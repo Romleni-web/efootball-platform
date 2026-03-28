@@ -1,3 +1,4 @@
+// models/Tournament.js - FIXED VERSION
 const mongoose = require('mongoose');
 
 const tournamentSchema = new mongoose.Schema({
@@ -10,13 +11,11 @@ const tournamentSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-    // NEW: Tournament format
     format: {
         type: String,
         enum: ['single_elimination', 'double_elimination', 'round_robin', 'swiss', 'league'],
         default: 'single_elimination'
     },
-    // NEW: Format-specific settings
     settings: {
         bestOf: { type: Number, default: 1 },
         bronzeMatch: { type: Boolean, default: false },
@@ -43,6 +42,23 @@ const tournamentSchema = new mongoose.Schema({
         second: { type: Number, default: 30 },
         third: { type: Number, default: 20 }
     },
+    // NEW: Prize distribution tracking
+    prizeDistributionStatus: {
+        type: String,
+        enum: ['pending', 'initiated', 'completed', 'failed', 'partial'],
+        default: 'pending'
+    },
+    prizeDistributionResults: [{
+        rank: Number,
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        status: { type: String, enum: ['pending', 'initiated', 'completed', 'failed'] },
+        paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+        transactionId: String,
+        amount: Number,
+        reason: String
+    }],
+    prizeDistributionInitiatedAt: Date,
+    prizeDistributionCompletedAt: Date,
     adminPhone: {
         type: String,
         required: true
@@ -77,7 +93,6 @@ const tournamentSchema = new mongoose.Schema({
         registeredAt: { type: Date, default: Date.now },
         checkedIn: { type: Boolean, default: false }
     }],
-    // NEW: Standings for round-based formats
     standings: [{
         player: {
             type: mongoose.Schema.Types.ObjectId,
@@ -118,5 +133,17 @@ const tournamentSchema = new mongoose.Schema({
 
 tournamentSchema.index({ status: 1, format: 1 });
 tournamentSchema.index({ 'registeredPlayers.user': 1 });
+
+// Helper to check if tournament can be finished
+tournamentSchema.methods.canFinish = function() {
+    return this.status === 'ongoing';
+};
+
+// Helper to get prize for rank
+tournamentSchema.methods.getPrizeForRank = function(rank) {
+    const distribution = this.prizeDistribution;
+    const percentages = [distribution?.first || 50, distribution?.second || 30, distribution?.third || 20];
+    return Math.floor(this.prizePool * (percentages[rank - 1] || 0) / 100);
+};
 
 module.exports = mongoose.model('Tournament', tournamentSchema);
