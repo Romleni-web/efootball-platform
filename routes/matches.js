@@ -4,15 +4,17 @@ const router = express.Router();
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const User = require('../models/User');
-const { auth } = require('../middleware/auth'); // Make sure this file exports { auth }
-const upload = require('../middleware/upload'); // Make sure this exports the multer instance
+const { auth } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
 
-// POST /api/matches/:id/result
+// POST /api/matches/:id/result - Dual submission system
 router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) => {
     try {
         const { score1, score2, winner, notes } = req.body;
         const userId = req.user._id.toString();
+
+        console.log('Received submission:', { score1, score2, winner, userId });
 
         let match = await Match.findById(req.params.id)
             .populate('tournament', 'name format')
@@ -25,10 +27,13 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
         const matchPlayer1Id = match.player1?._id?.toString();
         const matchPlayer2Id = match.player2?._id?.toString();
         
+        console.log('Player IDs:', { matchPlayer1Id, matchPlayer2Id, currentUser: userId });
+
         const isPlayer1 = matchPlayer1Id === userId;
         const isPlayer2 = matchPlayer2Id === userId;
 
         if (!isPlayer1 && !isPlayer2) {
+            console.log('User not participant:', userId);
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
@@ -54,6 +59,7 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
 
         const playerKey = isPlayer1 ? 'player1' : 'player2';
 
+        // Build submission data
         const submissionData = {
             score1: parseInt(score1),
             score2: parseInt(score2),
@@ -64,6 +70,9 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
             submittedBy: req.user._id
         };
 
+        console.log('Saving submission for', playerKey);
+
+        // Save submission
         await Match.findByIdAndUpdate(req.params.id, {
             $set: {
                 [`submissions.${playerKey}`]: submissionData,
@@ -71,7 +80,7 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
             }
         });
 
-        // Reload match
+        // Reload match to get both submissions
         match = await Match.findById(req.params.id)
             .populate('tournament', 'name format')
             .populate('player1', 'username')
@@ -80,11 +89,18 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
         const bothSubmitted = match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt;
         const submissionsMatch = bothSubmitted ? match.submissionsMatch() : false;
 
+        console.log('Both submitted:', bothSubmitted);
+        console.log('Submissions match:', submissionsMatch);
+
         if (bothSubmitted && submissionsMatch) {
+            // Calculate winner ID from submission
             const winnerId = match.submissions.player1.winner === 'player1' 
                 ? match.player1._id 
                 : match.player2._id;
 
+            console.log('Auto-approving match. Winner ID:', winnerId.toString());
+
+            // Update match as completed
             await Match.findByIdAndUpdate(req.params.id, {
                 $set: {
                     score1: match.submissions.player1.score1,
@@ -99,30 +115,53 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
                 }
             });
 
+            // RELOAD match with populated fields for advancement
             const completedMatch = await Match.findById(req.params.id)
                 .populate('player1')
-                .populate('player2');
+                .populate('player2')
+                .populate('winner');
+
+            console.log('Completed match:', {
+                id: completedMatch._id.toString(),
+                player1: completedMatch.player1?._id?.toString(),
+                player2: completedMatch.player2?._id?.toString(),
+                winner: completedMatch.winner?._id?.toString(),
+                nextMatch: completedMatch.nextMatch?.toString()
+            });
 
             // Advance tournament
             const tournament = await Tournament.findById(match.tournament._id);
             if (tournament) {
+                // Get fresh matches and populate tournament object properly
                 const allMatches = await Match.find({ tournament: tournament._id });
-                tournament.matches = allMatches;
                 
-                const logic = TournamentLogicFactory.create(tournament);
+                // Create tournament object for logic with populated matches
+                const tournamentForLogic = {
+                    ...tournament.toObject(),
+                    matches: allMatches
+                };
                 
+                const logic = TournamentLogicFactory.create(tournamentForLogic);
+                
+                console.log('Advancing winner...');
                 const nextMatch = await logic.advanceWinner(completedMatch);
+                console.log('Next match result:', nextMatch ? nextMatch._id.toString() : 'null');
                 
+                // For double elimination, also advance loser
                 if (tournament.format === 'double_elimination' && logic.advanceLoser) {
-                    await logic.advanceLoser(completedMatch);
+                    console.log('Advancing loser (double elimination)...');
+                    const loserMatch = await logic.advanceLoser(completedMatch);
+                    console.log('Loser match result:', loserMatch ? loserMatch._id.toString() : 'null');
                 }
                 
+                // Check if tournament complete
                 if (logic.isTournamentComplete && logic.isTournamentComplete()) {
+                    console.log('Tournament complete!');
                     tournament.status = 'finished';
                     const rankings = logic.getFinalRankings(allMatches);
                     tournament.winners = rankings.map((r, i) => ({
                         rank: r.rank || (i + 1),
-                        player: r.player,
+                        player: r.player._id || r.player,
                         prize: tournament.getPrizeForRank(r.rank || (i + 1))
                     }));
                     await tournament.save();
@@ -132,12 +171,14 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
                 }
             }
 
+            // Update player stats
             await updatePlayerStats(completedMatch);
 
             return res.json({ 
                 success: true, 
                 message: 'Both players submitted matching results - match approved!',
-                autoApproved: true
+                autoApproved: true,
+                match: { id: match._id, status: 'completed' }
             });
         }
 
@@ -158,7 +199,8 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
 
         res.json({ 
             success: true, 
-            message: 'Result submitted - waiting for opponent'
+            message: 'Result submitted - waiting for opponent',
+            waitingFor: isPlayer1 ? 'player2' : 'player1'
         });
 
     } catch (error) {
@@ -215,7 +257,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// Helper function
+// Helper function to update player stats
 async function updatePlayerStats(match) {
     try {
         const winner = await User.findById(match.winner);
@@ -242,5 +284,34 @@ async function updatePlayerStats(match) {
     }
 }
 
-// CRITICAL: Export the router
+// Debug routes (development only)
+if (process.env.NODE_ENV !== 'production') {
+    router.get('/:id/debug', auth, async (req, res) => {
+        try {
+            const match = await Match.findById(req.params.id).lean();
+            if (!match) return res.status(404).json({ message: 'Match not found' });
+            
+            const userId = req.user._id.toString();
+            
+            res.json({
+                matchId: match._id.toString(),
+                status: match.status,
+                player1: match.player1?.toString(),
+                player2: match.player2?.toString(),
+                winner: match.winner?.toString(),
+                nextMatch: match.nextMatch?.toString(),
+                losersNextMatch: match.losersNextMatch?.toString(),
+                currentUser: userId,
+                isPlayer1: match.player1?.toString() === userId,
+                isPlayer2: match.player2?.toString() === userId,
+                submissions: match.submissions || null,
+                player1HasSubmitted: !!(match.submissions?.player1?.submittedAt),
+                player2HasSubmitted: !!(match.submissions?.player2?.submittedAt)
+            });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    });
+}
+
 module.exports = router;

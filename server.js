@@ -128,3 +128,10 @@ express.Router.prototype.post = function(path, ...handlers) {
     });
     return originalPost.call(this, path, ...handlers);
 };
+
+// DEBUG: Log all match updates
+const originalMatchFindByIdAndUpdate = Match.findByIdAndUpdate;
+Match.findByIdAndUpdate = function(...args) {
+    console.log('Match.findByIdAndUpdate called:', args[0], args[1]);
+    return originalMatchFindByIdAndUpdate.apply(this, args);
+};
