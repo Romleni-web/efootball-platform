@@ -230,35 +230,34 @@ router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
 
         await match.save();
 
-        // Update tournament standings or advance bracket
+        // Update tournament standings or advance bracket automatically
         const tournament = await Tournament.findById(match.tournament);
         if (tournament) {
-            const logic = TournamentLogicFactory.create(tournament);
+            // Load all matches to give logic full context of the bracket
+            const allMatches = await Match.find({ tournament: tournament._id });
+            const tournamentForLogic = {
+                ...tournament.toObject(),
+                matches: allMatches
+            };
+            const logic = TournamentLogicFactory.create(tournamentForLogic);
             
-            if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
+            if (['round_robin', 'league', 'swiss'].includes(tournamentForLogic.format)) {
                 tournament.standings = logic.calculateStandings();
             } else {
-                const nextMatch = await logic.advanceWinner(match);
-                if (nextMatch) {
-                    await Match.findByIdAndUpdate(nextMatch._id, {
-                        player1: nextMatch.player1,
-                        player2: nextMatch.player2,
-                        status: nextMatch.status
-                    });
+                console.log(`[Admin] Advancing bracket for match ${match._id}`);
+                await logic.advanceWinner(match);
+                
+                // For double elimination, we must also advance the loser
+                if (tournamentForLogic.format === 'double_elimination' && logic.advanceLoser) {
+                    await logic.advanceLoser(match);
                 }
             }
 
-            // Check if tournament complete
-            const incompleteMatches = await Match.find({
-                _id: { $in: tournament.matches },
-                status: { $nin: ['completed', 'bye'] }
-            });
-
-            if (incompleteMatches.length === 0) {
+            // Check if tournament is finished
+            const updatedMatches = await Match.find({ tournament: tournament._id });
+            if (logic.isTournamentComplete()) {
                 tournament.status = 'finished';
-                const rankings = logic.getFinalRankings ? 
-                    logic.getFinalRankings(tournament.matches) : 
-                    logic.calculateStandings();
+                const rankings = logic.getFinalRankings ? logic.getFinalRankings(updatedMatches) : logic.calculateStandings();
                 
                 tournament.winners = rankings.map((r, i) => ({
                     rank: r.rank || (i + 1),
