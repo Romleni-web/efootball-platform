@@ -7,6 +7,7 @@ const Match = require('../models/Match');
 const Payment = require('../models/Payment');
 const jwt = require('jsonwebtoken');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
+const { resolveMatchResult } = require('../services/adminService');
 
 // Middleware to verify token
 const auth = async (req, res, next) => {
@@ -181,97 +182,10 @@ router.get('/matches/:matchId/advancement-debug', auth, adminOnly, async (req, r
 // POST /api/admin/matches/:matchId/resolve
 router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
     try {
-        const { decision, score1, score2, winner, reason } = req.body;
-        const match = await Match.findById(req.params.matchId);
-
-        if (!match) return res.status(404).json({ message: 'Match not found' });
-
-        if (decision === 'custom') {
-            // Admin sets custom result
-            match.status = 'completed';
-            match.score1 = parseInt(score1);
-            match.score2 = parseInt(score2);
-            match.winner = winner === 'player1' ? match.player1 : match.player2;
-            match.adminVerification = {
-                status: 'approved',
-                verifiedBy: req.user.id,
-                verifiedAt: new Date(),
-                finalScore1: parseInt(score1),
-                finalScore2: parseInt(score2),
-                finalWinner: winner === 'player1' ? match.player1 : match.player2
-            };
-        } else if (decision === 'player1_correct') {
-            // Player 1's submission was correct
-            const s1 = match.submissions.player1;
-            match.status = 'completed';
-            match.score1 = s1.score1;
-            match.score2 = s1.score2;
-            match.winner = s1.winner === 'player1' ? match.player1 : match.player2;
-            match.adminVerification = {
-                status: 'approved',
-                verifiedBy: req.user.id,
-                verifiedAt: new Date(),
-                rejectionReason: reason || 'Player 2 submission rejected'
-            };
-        } else if (decision === 'player2_correct') {
-            // Player 2's submission was correct
-            const s2 = match.submissions.player2;
-            match.status = 'completed';
-            match.score1 = s2.score1;
-            match.score2 = s2.score2;
-            match.winner = s2.winner === 'player1' ? match.player1 : match.player2;
-            match.adminVerification = {
-                status: 'approved',
-                verifiedBy: req.user.id,
-                verifiedAt: new Date(),
-                rejectionReason: reason || 'Player 1 submission rejected'
-            };
-        }
-
-        await match.save();
-
-        // Update tournament standings or advance bracket automatically
-        const tournament = await Tournament.findById(match.tournament);
-        if (tournament) {
-            // Load all matches to give logic full context of the bracket
-            const allMatches = await Match.find({ tournament: tournament._id });
-            const tournamentForLogic = {
-                ...tournament.toObject(),
-                matches: allMatches
-            };
-            const logic = TournamentLogicFactory.create(tournamentForLogic);
-            
-            if (['round_robin', 'league', 'swiss'].includes(tournamentForLogic.format)) {
-                tournament.standings = logic.calculateStandings();
-            } else {
-                console.log(`[Admin] Advancing bracket for match ${match._id}`);
-                await logic.advanceWinner(match);
-                
-                // For double elimination, we must also advance the loser
-                if (tournamentForLogic.format === 'double_elimination' && logic.advanceLoser) {
-                    await logic.advanceLoser(match);
-                }
-            }
-
-            // Check if tournament is finished
-            const updatedMatches = await Match.find({ tournament: tournament._id });
-            if (logic.isTournamentComplete()) {
-                tournament.status = 'finished';
-                const rankings = logic.getFinalRankings ? logic.getFinalRankings(updatedMatches) : logic.calculateStandings();
-                
-                tournament.winners = rankings.map((r, i) => ({
-                    rank: r.rank || (i + 1),
-                    player: r.player,
-                    prize: calculatePrize(tournament.prizePool, i + 1, tournament.prizeDistribution)
-                }));
-            }
-
-            await tournament.save();
-        }
-
+        const match = await resolveMatchResult(req.params.matchId, req.user, req.body);
         res.json({ success: true, match });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(400).json({ message: error.message });
     }
 });
 

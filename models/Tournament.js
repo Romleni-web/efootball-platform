@@ -146,4 +146,16 @@ tournamentSchema.methods.getPrizeForRank = function(rank) {
     return Math.floor(this.prizePool * (percentages[rank - 1] || 0) / 100);
 };
 
+// NEW: Helper to finalize tournament results
+tournamentSchema.methods.finalizeResults = function(rankings) {
+    this.status = 'finished';
+    this.winners = rankings.map((r, i) => ({
+        rank: r.rank || (i + 1),
+        player: r.player,
+        prize: this.getPrizeForRank(r.rank || (i + 1))
+    }));
+    this.prizeDistributionStatus = 'initiated';
+    this.prizeDistributionInitiatedAt = new Date();
+};
+
 module.exports = mongoose.model('Tournament', tournamentSchema);

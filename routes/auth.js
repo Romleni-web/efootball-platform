@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const { sendResetEmail } = require('../services/emailService');
 
 // Generate JWT
 const generateToken = (userId) => {
@@ -138,11 +139,15 @@ router.post('/forgot-password', [
         const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:10000';
         const resetLink = `${appBaseUrl}/?page=reset-password&token=${rawToken}`;
 
-        // No mail provider configured yet; return the link for now.
-        // In production, this should be emailed to the user.
+        try {
+            await sendResetEmail(user.email, resetLink);
+        } catch (mailError) {
+            console.error('Email sending failed:', mailError);
+            // We still return success to the client to avoid enumeration
+        }
+
         res.json({
-            message: 'Password reset link generated.',
-            resetLink
+            message: 'If that email exists, a password reset link has been sent.'
         });
     } catch (error) {
         console.error('Forgot password error:', error);

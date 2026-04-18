@@ -357,11 +357,7 @@ const Pages = {
             try {
                 UI.showLoading();
                 const result = await API.forgotPassword(formData.get('email'));
-                UI.showToast(result.message || 'Reset link generated', 'success');
-                if (result.resetLink) {
-                    document.getElementById('resetLinkField').value = result.resetLink;
-                    document.getElementById('resetLinkContainer').style.display = 'block';
-                }
+                    UI.showToast(result.message || 'If that email exists, a reset link has been sent.', 'success');
             } catch (error) {
                 UI.showToast(error.message, 'error');
             } finally {

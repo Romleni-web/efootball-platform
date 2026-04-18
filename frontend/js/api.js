@@ -292,6 +292,10 @@ const API = {
     async handleResponse(response) {
         const data = await response.json();
         if (!response.ok) {
+            if (response.status === 401 && Auth.isAuthenticated()) {
+                Auth.logout();
+                throw new Error('Session expired. Please login again.');
+            }
             throw new Error(data.message || 'Something went wrong');
         }
         return data;
