@@ -12,7 +12,7 @@
         <!-- Navigation -->
         <nav class="navbar" id="navbar">
             <div class="nav-brand">
-                <span class="logo">⚽</span>
+                <span class="logo"></span>
                 <span class="brand-text">eFootball Arena</span>
             </div>
             <div class="nav-links" id="navLinks">
@@ -23,6 +23,40 @@
             </div>
             <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
         </nav>
+
+        <!-- Player Cards Showcase Section -->
+<section class="player-showcase">
+    <h2>Featured Players</h2>
+    <div class="player-cards-grid">
+        <!-- Messi Card -->
+        <div class="player-card featured">
+            <img src="messi.png" alt="Lionel Messi - OVR 98 CF">
+            <div class="player-card-overlay">
+                <h3>Lionel Messi</h3>
+                <p>OVR 98 • Center Forward</p>
+            </div>
+        </div>
+        
+        <!-- Ronaldo Card -->
+        <div class="player-card">
+            <img src="batistuta.png" alt="Cristiano Ronaldo - OVR 97 ST">
+            <div class="player-card-overlay">
+                <h3>Gabriel Batistuta</h3>
+                <p>OVR 95 • Striker</p>
+            </div>
+        </div>
+        
+        <!-- Batistuta Card -->
+        <div class="player-card">
+            <img src="ronaldo.png" alt="Gabriel Batistuta - OVR 95">
+            <div class="player-card-overlay">
+                <h3>Cristiano Ronaldo</h3>
+                <p>OVR 97 • Striker</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 
         <!-- Main Content Container -->
         <main id="mainContent"></main>
@@ -37,6 +71,68 @@
     <div id="toastContainer"></div>
 
     <!-- Scripts -->
+    <script>
+        // Theme Toggle Logic
+(function() {
+    // Check for saved theme preference or default to 'light'
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    
+    // Apply the saved theme
+    if (currentTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    
+    // Create toggle button if it doesn't exist
+    function initThemeToggle() {
+        // Add toggle to navbar if there's a nav-links container
+        const navLinks = document.querySelector('.nav-links');
+        if (navLinks && !document.querySelector('.theme-toggle')) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'theme-toggle';
+            toggleBtn.setAttribute('aria-label', 'Toggle dark mode');
+            toggleBtn.setAttribute('title', 'Toggle dark mode');
+            
+            // Insert before mobile menu button or at end of nav-links
+            const mobileBtn = document.querySelector('.mobile-menu-btn');
+            if (mobileBtn) {
+                navLinks.parentNode.insertBefore(toggleBtn, mobileBtn);
+            } else {
+                navLinks.appendChild(toggleBtn);
+            }
+            
+            // Toggle event listener
+            toggleBtn.addEventListener('click', function() {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                if (isDark) {
+                    document.documentElement.removeAttribute('data-theme');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                }
+            });
+        }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initThemeToggle);
+    } else {
+        initThemeToggle();
+    }
+    
+    // Also listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (!localStorage.getItem('theme')) {
+            if (e.matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        }
+    });
+})();
+    </script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui.js"></script>

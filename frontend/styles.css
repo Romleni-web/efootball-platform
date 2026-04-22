@@ -1,3 +1,222 @@
+/* ============================================
+   THEME TOGGLE SWITCH
+   ============================================ */
+.theme-toggle {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    background: var(--gray-200);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 3px;
+}
+
+.theme-toggle::after {
+    content: '☀️';
+    position: absolute;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: transform 0.3s ease, content 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .theme-toggle {
+    background: var(--primary);
+}
+
+[data-theme="dark"] .theme-toggle::after {
+    content: '🌙';
+    transform: translateX(22px);
+}
+
+/* ============================================
+   PLAYER CARDS SHOWCASE - ALWAYS HORIZONTAL
+   ============================================ */
+.player-showcase {
+    padding: 3rem 0;
+    text-align: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.player-showcase h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 2rem;
+    letter-spacing: -0.025em;
+}
+
+/* Always horizontal, never wrap */
+.player-cards-grid {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    flex-wrap: nowrap;
+}
+
+.player-card {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: var(--light);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    flex: 0 0 auto;
+    width: 280px;
+}
+
+.player-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-lg), 0 0 30px rgba(37, 99, 235, 0.15);
+    border-color: var(--primary);
+}
+
+.player-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+.player-card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent);
+    padding: 2rem 1rem 1rem;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.player-card:hover .player-card-overlay {
+    opacity: 1;
+}
+
+.player-card-overlay h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.player-card-overlay p {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+/* ============================================
+   PLAYER CARDS SHOWCASE - FLUID RESPONSIVE
+   ============================================ */
+.player-showcase {
+    padding: 3rem 0;
+    text-align: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.player-showcase h2 {
+    font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+    letter-spacing: -0.025em;
+}
+
+/* Always horizontal, never wrap, fluid sizing */
+.player-cards-grid {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: clamp(0.5rem, 2vw, 1.5rem);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 clamp(0.5rem, 3vw, 2rem);
+    flex-wrap: nowrap;
+}
+
+.player-card {
+    position: relative;
+    border-radius: clamp(6px, 1.5vw, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: var(--light);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    flex: 0 0 auto;
+    /* Fluid width based on viewport */
+    width: clamp(140px, 22vw, 300px);
+}
+
+.player-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-lg), 0 0 30px rgba(37, 99, 235, 0.15);
+    border-color: var(--primary);
+}
+
+.player-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+.player-card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent);
+    padding: clamp(0.75rem, 3vw, 2rem) clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 1.5vw, 1rem);
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.player-card:hover .player-card-overlay {
+    opacity: 1;
+}
+
+.player-card-overlay h3 {
+    font-size: clamp(0.75rem, 2vw, 1.25rem);
+    font-weight: 700;
+    margin-bottom: clamp(0.125rem, 0.5vw, 0.25rem);
+}
+
+.player-card-overlay p {
+    font-size: clamp(0.625rem, 1.5vw, 0.875rem);
+    opacity: 0.9;
+}
+
+/* ============================================
+   NO BREAKPOINTS NEEDED - clamp() handles all
+   ============================================ */
+
+/* ============================================
+   ROOT VARIABLES - LIGHT MODE (Default)
+   ============================================ */
 :root {
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
@@ -31,6 +250,45 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
+/* ============================================
+   DARK MODE VARIABLES
+   ============================================ */
+[data-theme="dark"] {
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --primary-light: rgba(59, 130, 246, 0.15);
+    --secondary: #94a3b8;
+    --accent: #10b981;
+    --dark: #f1f5f9;
+    --darker: #ffffff;
+    --light: #0f172a;
+    --gray-50: #1e293b;
+    --gray-100: #1e293b;
+    --gray-200: #334155;
+    --gray-300: #475569;
+    --gray-400: #64748b;
+    --gray-500: #94a3b8;
+    --gray-600: #cbd5e1;
+    --gray-700: #e2e8f0;
+    --gray-800: #f1f5f9;
+    --gray-900: #f8fafc;
+    --success: #10b981;
+    --success-light: rgba(16, 185, 129, 0.15);
+    --warning: #f59e0b;
+    --warning-light: rgba(245, 158, 11, 0.15);
+    --danger: #ef4444;
+    --danger-light: rgba(239, 68, 68, 0.15);
+    --border: #334155;
+    --border-subtle: #1e293b;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
 * {
     margin: 0;
     padding: 0;
@@ -45,9 +303,12 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Navigation */
+/* ============================================
+   NAVIGATION
+   ============================================ */
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -59,6 +320,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .nav-brand {
@@ -125,7 +387,9 @@ body {
     background: var(--gray-100);
 }
 
-/* Main Content */
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
 #mainContent {
     min-height: calc(100vh - 140px);
     padding: 2rem 5%;
@@ -133,7 +397,9 @@ body {
     margin: 0 auto;
 }
 
-/* Hero Section */
+/* ============================================
+   HERO SECTION
+   ============================================ */
 .hero {
     text-align: center;
     padding: 4rem 0 3rem;
@@ -163,7 +429,9 @@ body {
     flex-wrap: wrap;
 }
 
-/* Live Tournament Section */
+/* ============================================
+   LIVE TOURNAMENT SECTION
+   ============================================ */
 .live-tournament-section {
     margin-top: 3rem;
 }
@@ -176,6 +444,7 @@ body {
     max-width: 800px;
     margin: 0 auto;
     box-shadow: var(--shadow-sm);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .live-tournament-header {
@@ -201,7 +470,9 @@ body {
     font-size: 0.875rem;
 }
 
-/* Buttons */
+/* ============================================
+   BUTTONS
+   ============================================ */
 .btn {
     padding: 0.625rem 1.25rem;
     border: none;
@@ -219,7 +490,7 @@ body {
 
 .btn-primary {
     background: var(--primary);
-    color: var(--light);
+    color: #ffffff;
 }
 
 .btn-primary:hover {
@@ -240,7 +511,7 @@ body {
 
 .btn-accent {
     background: var(--accent);
-    color: var(--light);
+    color: #ffffff;
 }
 
 .btn-accent:hover {
@@ -250,7 +521,7 @@ body {
 
 .btn-success {
     background: var(--success);
-    color: var(--light);
+    color: #ffffff;
 }
 
 .btn-success:hover {
@@ -259,7 +530,7 @@ body {
 
 .btn-danger {
     background: var(--danger);
-    color: var(--light);
+    color: #ffffff;
 }
 
 .btn-danger:hover {
@@ -268,14 +539,16 @@ body {
 
 .btn-warning {
     background: var(--warning);
-    color: var(--light);
+    color: #ffffff;
 }
 
 .btn-warning:hover {
     background: #b45309;
 }
 
-/* Cards */
+/* ============================================
+   CARDS
+   ============================================ */
 .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -357,7 +630,9 @@ body {
     gap: 0.375rem;
 }
 
-/* Forms */
+/* ============================================
+   FORMS
+   ============================================ */
 .form-container {
     max-width: 420px;
     margin: 2rem auto;
@@ -366,6 +641,7 @@ body {
     border-radius: 12px;
     padding: 2rem;
     box-shadow: var(--shadow);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .form-container h2 {
@@ -410,6 +686,12 @@ body {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
 .form-group input::placeholder {
     color: var(--gray-400);
 }
@@ -419,7 +701,9 @@ body {
     font-size: 0.875rem;
 }
 
-/* Modal */
+/* ============================================
+   MODAL
+   ============================================ */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -437,6 +721,10 @@ body {
     backdrop-filter: blur(4px);
 }
 
+[data-theme="dark"] .modal-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
@@ -452,7 +740,7 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     transform: scale(0.96);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, background 0.3s ease, border-color 0.3s ease;
     box-shadow: var(--shadow-lg);
 }
 
@@ -490,13 +778,16 @@ body {
     background: var(--gray-100);
 }
 
-/* Payment Steps */
+/* ============================================
+   PAYMENT STEPS
+   ============================================ */
 .payment-steps {
     background: var(--gray-50);
     border-radius: 10px;
     padding: 1.25rem;
     margin: 1rem 0;
     border: 1px solid var(--border-subtle);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .step {
@@ -552,9 +843,12 @@ body {
     margin: 0.5rem 0;
     border: 1px dashed var(--gray-300);
     letter-spacing: 0.05em;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-/* Dashboard */
+/* ============================================
+   DASHBOARD
+   ============================================ */
 .dashboard {
     display: grid;
     grid-template-columns: 240px 1fr;
@@ -568,6 +862,7 @@ body {
     border-radius: 12px;
     padding: 1rem;
     height: fit-content;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .sidebar-menu {
@@ -606,9 +901,12 @@ body {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.5rem;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-/* Stats Cards */
+/* ============================================
+   STATS CARDS
+   ============================================ */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -622,6 +920,7 @@ body {
     padding: 1.25rem;
     text-align: left;
     border: 1px solid var(--border);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .stat-value {
@@ -638,7 +937,9 @@ body {
     font-size: 0.875rem;
 }
 
-/* Bracket */
+/* ============================================
+   BRACKET
+   ============================================ */
 .bracket {
     display: flex;
     gap: 2rem;
@@ -670,6 +971,7 @@ body {
     padding: 0.875rem;
     margin-bottom: 1rem;
     position: relative;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .match::after {
@@ -719,14 +1021,16 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-/* Toast Notifications */
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
 .toast {
     position: fixed;
     bottom: 1.5rem;
     right: 1.5rem;
     padding: 0.875rem 1.25rem;
     border-radius: 10px;
-    color: var(--light);
+    color: #ffffff;
     font-weight: 500;
     font-size: 0.875rem;
     transform: translateX(400px);
@@ -744,20 +1048,19 @@ body {
 
 .toast.success {
     background: var(--success);
-    color: white;
 }
 
 .toast.error {
     background: var(--danger);
-    color: white;
 }
 
 .toast.warning {
     background: var(--warning);
-    color: white;
 }
 
-/* Loading Spinner */
+/* ============================================
+   LOADING SPINNER
+   ============================================ */
 .spinner {
     width: 24px;
     height: 24px;
@@ -772,7 +1075,9 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Leaderboard */
+/* ============================================
+   LEADERBOARD
+   ============================================ */
 .leaderboard-table {
     width: 100%;
     border-collapse: separate;
@@ -785,6 +1090,7 @@ body {
     padding: 0.875rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    transition: border-color 0.3s ease;
 }
 
 .leaderboard-table th {
@@ -794,6 +1100,7 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     background: var(--gray-50);
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .leaderboard-table tr:hover {
@@ -810,11 +1117,17 @@ body {
     width: 40px;
 }
 
-.rank-1 { color: #b45309; }
-.rank-2 { color: #64748b; }
-.rank-3 { color: #92400e; }
+.rank-1 { color: #f59e0b; }
+.rank-2 { color: #94a3b8; }
+.rank-3 { color: #b45309; }
 
-/* Footer */
+[data-theme="dark"] .rank-1 { color: #fbbf24; }
+[data-theme="dark"] .rank-2 { color: #cbd5e1; }
+[data-theme="dark"] .rank-3 { color: #d97706; }
+
+/* ============================================
+   FOOTER
+   ============================================ */
 .footer {
     text-align: center;
     padding: 2rem;
@@ -822,9 +1135,12 @@ body {
     border-top: 1px solid var(--border);
     font-size: 0.875rem;
     background: var(--light);
+    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
-/* Animations */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -834,10 +1150,12 @@ body {
     animation: fadeIn 0.3s ease forwards;
 }
 
-/* Admin Panel Specific */
+/* ============================================
+   ADMIN PANEL SPECIFIC
+   ============================================ */
 .admin-badge {
     background: var(--danger);
-    color: var(--light);
+    color: #ffffff;
     padding: 0.125rem 0.5rem;
     border-radius: 9999px;
     font-size: 0.6875rem;
@@ -852,6 +1170,7 @@ body {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
     border: 1px solid var(--border);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .payment-item {
@@ -860,6 +1179,7 @@ body {
     align-items: center;
     padding: 1rem;
     border-bottom: 1px solid var(--border);
+    transition: border-color 0.3s ease;
 }
 
 .payment-item:last-child {
@@ -878,7 +1198,9 @@ body {
     transform: scale(1.05);
 }
 
-/* WhatsApp Button */
+/* ============================================
+   WHATSAPP BUTTON
+   ============================================ */
 .whatsapp-btn {
     background: #128c7e;
     color: white;
@@ -898,7 +1220,9 @@ body {
     box-shadow: var(--shadow-md);
 }
 
-/* Empty State */
+/* ============================================
+   EMPTY STATE
+   ============================================ */
 .empty-state {
     text-align: center;
     padding: 3rem;
@@ -912,7 +1236,9 @@ body {
     color: var(--gray-300);
 }
 
-/* Copy Button */
+/* ============================================
+   COPY BUTTON
+   ============================================ */
 .copy-btn {
     background: var(--light);
     border: 1px solid var(--border);
@@ -931,13 +1257,16 @@ body {
     color: var(--gray-800);
 }
 
-/* Tournament Detail */
+/* ============================================
+   TOURNAMENT DETAIL
+   ============================================ */
 .tournament-detail-header {
     background: var(--light);
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
     border: 1px solid var(--border);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .tournament-tabs {
@@ -946,6 +1275,7 @@ body {
     margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0;
+    transition: border-color 0.3s ease;
 }
 
 .tab-btn {
@@ -990,7 +1320,9 @@ body {
     animation: fadeIn 0.2s ease;
 }
 
-/* Format Badge */
+/* ============================================
+   FORMAT BADGE
+   ============================================ */
 .format-badge {
     font-size: 0.75rem;
     display: inline-flex;
@@ -1002,15 +1334,19 @@ body {
     border: 1px solid var(--border);
     color: var(--gray-600);
     font-weight: 500;
+    transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
-/* Standings Table */
+/* ============================================
+   STANDINGS TABLE
+   ============================================ */
 .standings-container {
     background: var(--light);
     border-radius: 10px;
     overflow: hidden;
     margin-top: 1rem;
     border: 1px solid var(--border);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .standings-table th {
@@ -1021,24 +1357,29 @@ body {
     font-weight: 600;
     background: var(--gray-50);
     padding: 0.75rem 1rem;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .standings-table td {
     font-size: 0.875rem;
     padding: 0.75rem 1rem;
     color: var(--gray-700);
+    transition: color 0.3s ease;
 }
 
 .standings-table tr:hover {
     background: var(--gray-50);
 }
 
-/* Dynamic Settings Panel */
+/* ============================================
+   DYNAMIC SETTINGS PANEL
+   ============================================ */
 #dynamicSettings {
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1rem;
     background: var(--gray-50);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 #dynamicSettings .form-group {
@@ -1051,21 +1392,117 @@ body {
     margin-bottom: 0.25rem;
     display: block;
     font-weight: 500;
+    transition: color 0.3s ease;
 }
 
-/* Format Select */
+/* ============================================
+   FORMAT SELECT
+   ============================================ */
 #formatSelect {
     font-size: 0.875rem;
     cursor: pointer;
     padding: 0.5rem 0.75rem;
+    background: var(--light);
+    color: var(--gray-800);
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
 #formatSelect option {
     padding: 0.5rem;
     background: var(--light);
+    color: var(--gray-800);
 }
 
-/* Responsive */
+/* ============================================
+   HOW IT WORKS - Compact Professional
+   ============================================ */
+.how-it-works {
+    padding: 2.5rem 0;
+}
+
+.how-it-works h2 {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.025em;
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.step-card {
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.step-card:hover {
+    border-color: var(--gray-300);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.step-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--primary-light);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.75rem;
+    color: var(--primary);
+}
+
+.step-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+}
+
+.step-card h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 0.25rem;
+}
+
+.step-card p {
+    font-size: 0.8125rem;
+    color: var(--gray-500);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Numbered variant */
+.step-number-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 768px) {
     .nav-links {
         display: none;
@@ -1135,6 +1572,14 @@ body {
         white-space: normal;
         min-width: 120px;
     }
+
+    .player-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .player-card.featured {
+        grid-column: span 1;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1164,91 +1609,8 @@ body {
         font-size: 0.75rem;
         padding: 0.5rem 0.5rem;
     }
-}
 
-/* ============================================
-   HOW IT WORKS - Compact Professional
-   ============================================ */
-
-.how-it-works {
-    padding: 2.5rem 0;
-}
-
-.how-it-works h2 {
-    text-align: center;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--dark);
-    margin-bottom: 1.5rem;
-    letter-spacing: -0.025em;
-}
-
-.steps-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.step-card {
-    background: var(--light);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
-    text-align: center;
-    transition: all 0.2s ease;
-}
-
-.step-card:hover {
-    border-color: var(--gray-300);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-}
-
-.step-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--primary-light);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 0.75rem;
-    color: var(--primary);
-}
-
-.step-icon svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 2;
-}
-
-.step-card h3 {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--dark);
-    margin-bottom: 0.25rem;
-}
-
-.step-card p {
-    font-size: 0.8125rem;
-    color: var(--gray-500);
-    line-height: 1.5;
-    margin: 0;
-}
-
-/* Numbered variant (if you prefer numbers over icons) */
-.step-number-compact {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: var(--primary);
-    color: white;
-    border-radius: 50%;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
+    .player-showcase h2 {
+        font-size: 1.25rem;
+    }
 }
