@@ -161,35 +161,29 @@ function wireLegacyInlineHandlers(root = document) {
 }
 
 const Pages = {
-    // Tournament Format Configuration
     TOURNAMENT_FORMATS: {
         single_elimination: {
             name: 'Single Elimination',
-            icon: '⚔️',
             description: 'Lose once and you\'re out. Fast and simple.',
             recommended: '8-64 players'
         },
         double_elimination: {
             name: 'Double Elimination',
-            icon: '🛡️',
             description: 'Two losses to eliminate. Fairer but longer.',
             recommended: '8-32 players'
         },
         round_robin: {
             name: 'Round Robin',
-            icon: '🔄',
             description: 'Everyone plays everyone. Best for small groups.',
             recommended: '4-12 players'
         },
         swiss: {
             name: 'Swiss System',
-            icon: '🇨🇭',
             description: 'Play similar-skilled opponents. Chess/Esports standard.',
             recommended: '8-128 players'
         },
         league: {
             name: 'League',
-            icon: '🏆',
             description: 'Season-long competition with home/away fixtures.',
             recommended: '4-20 players'
         }
@@ -202,7 +196,7 @@ const Pages = {
         let liveTournamentHtml = `
             <div class="empty-state">
                 <p>No live tournament right now.</p>
-                <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Check upcoming competitions in the tournaments page.</p>
+                <p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">Check upcoming competitions in the tournaments page.</p>
             </div>
         `;
 
@@ -220,13 +214,13 @@ const Pages = {
                             <h3>${liveTournament.name}</h3>
                             <span class="tournament-status status-${liveTournament.status}">${statusLabel}</span>
                         </div>
-                        <p style="color: var(--gray); margin: 0.5rem 0 1rem;">
+                        <p style="color: var(--gray-500); margin: 0.5rem 0 1rem;">
                             ${liveTournament.description || 'Join the action and compete for the top spot.'}
                         </p>
                         <div class="live-tournament-meta">
-                            <span>💰 ${UI.formatCurrency(liveTournament.entryFee || 0)} entry</span>
-                            <span>🏆 ${UI.formatCurrency(liveTournament.prizePool || 0)} prize</span>
-                            <span>👥 ${(liveTournament.registeredPlayers || []).length} players</span>
+                            <span>${UI.formatCurrency(liveTournament.entryFee || 0)} entry</span>
+                            <span>${UI.formatCurrency(liveTournament.prizePool || 0)} prize</span>
+                            <span>${(liveTournament.registeredPlayers || []).length} players</span>
                         </div>
                         <div style="margin-top: 1rem;">
                             <button class="btn btn-primary" onclick="Router.navigate('tournament/${liveTournament._id}')">View Tournament</button>
@@ -238,14 +232,14 @@ const Pages = {
             liveTournamentHtml = `
                 <div class="empty-state">
                     <p>Could not load live tournament.</p>
-                    <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Try refreshing the page.</p>
+                    <p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">Try refreshing the page.</p>
                 </div>
             `;
         }
 
         mainContent.innerHTML = `
             <section class="hero">
-                <h1>COMPETE. WIN. EARN.</h1>
+                <h1>Compete. Win. Earn.</h1>
                 <p>Join the ultimate eFootball tournament platform. Compete against the best players in Kenya, win cash prizes, and climb the leaderboard.</p>
                 <div class="cta-buttons">
                     <button class="btn btn-primary" onclick="Router.navigate('tournaments')">Browse Tournaments</button>
@@ -254,32 +248,40 @@ const Pages = {
             </section>
 
             <section class="live-tournament-section">
-                <h2 style="font-family: Orbitron; text-align: center; margin-bottom: 1.5rem; color: var(--primary);">Live Tournament</h2>
+                <h2 style="text-align: center; margin-bottom: 1.5rem; color: var(--dark); font-weight: 700;">Live Tournament</h2>
                 ${liveTournamentHtml}
             </section>
             
-            <section style="margin-top: 4rem;">
-                <h2 style="font-family: Orbitron; text-align: center; margin-bottom: 2rem; color: var(--primary);">How It Works</h2>
-                <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
-                    <div class="tournament-card" style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
-                        <h3>1. Register</h3>
-                        <p style="color: var(--gray);">Create your account and set your eFootball ID</p>
+            <section class="how-it-works">
+                <h2>How It Works</h2>
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <h3>Register</h3>
+                        <p>Create your account and set your eFootball ID</p>
                     </div>
-                    <div class="tournament-card" style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
-                        <h3>2. Pay Entry Fee</h3>
-                        <p style="color: var(--gray);">Send M-Pesa to admin and upload proof</p>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+                        </div>
+                        <h3>Pay Entry Fee</h3>
+                        <p>Send M-Pesa to admin and upload proof</p>
                     </div>
-                    <div class="tournament-card" style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚽</div>
-                        <h3>3. Play & Win</h3>
-                        <p style="color: var(--gray);">Compete in matches and submit results</p>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>
+                        </div>
+                        <h3>Play & Win</h3>
+                        <p>Compete in matches and submit results</p>
                     </div>
-                    <div class="tournament-card" style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">🏆</div>
-                        <h3>4. Collect Prizes</h3>
-                        <p style="color: var(--gray);">Winners receive M-Pesa prize money</p>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                        </div>
+                        <h3>Collect Prizes</h3>
+                        <p>Winners receive M-Pesa prize money</p>
                     </div>
                 </div>
             </section>
@@ -295,11 +297,11 @@ const Pages = {
                     ${UI.createFormGroup('Email', 'email', 'email', 'your@email.com')}
                     ${UI.createFormGroup('Password', 'password', 'password', '••••••••')}
                     <p style="text-align: right; margin-top: -0.5rem; margin-bottom: 1rem;">
-                        <a href="#" onclick="Router.navigate('forgot')" style="color: var(--primary); font-size: 0.9rem;">Forgot password?</a>
+                        <a href="#" onclick="Router.navigate('forgot')" style="color: var(--primary); font-size: 0.875rem;">Forgot password?</a>
                     </p>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
                 </form>
-                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
                     Don't have an account? <a href="#" onclick="Router.navigate('register')" style="color: var(--primary);">Register</a>
                 </p>
             </div>
@@ -331,20 +333,20 @@ const Pages = {
         mainContent.innerHTML = `
             <div class="form-container fade-in">
                 <h2>Forgot Password</h2>
-                <p style="color: var(--gray); margin-bottom: 1rem; text-align: center;">
+                <p style="color: var(--gray-500); margin-bottom: 1rem; text-align: center;">
                     Enter your account email and we will generate a reset link.
                 </p>
                 <form id="forgotPasswordForm">
                     ${UI.createFormGroup('Email', 'email', 'email', 'your@email.com')}
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Generate Reset Link</button>
                 </form>
-                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
                     Remembered your password? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
                 </p>
-                <div id="resetLinkContainer" style="display: none; margin-top: 1rem; padding: 0.8rem; background: var(--dark); border-radius: 10px;">
-                    <small style="color: var(--gray);">Reset link:</small>
+                <div id="resetLinkContainer" style="display: none; margin-top: 1rem; padding: 0.875rem; background: var(--gray-100); border-radius: 8px;">
+                    <small style="color: var(--gray-500);">Reset link:</small>
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <input id="resetLinkField" readonly style="width: 100%; padding: 0.6rem; background: var(--glass); border: 1px solid var(--glass-border); color: var(--light); border-radius: 6px;">
+                        <input id="resetLinkField" readonly style="width: 100%; padding: 0.625rem; background: var(--light); border: 1px solid var(--border); color: var(--gray-800); border-radius: 6px;">
                         <button type="button" class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('resetLinkField').value)">Copy</button>
                     </div>
                 </div>
@@ -379,7 +381,7 @@ const Pages = {
                     ${UI.createFormGroup('Confirm Password', 'password', 'confirmPassword', '••••••••')}
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Reset Password</button>
                 </form>
-                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
                     Back to <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
                 </p>
             </div>
@@ -427,7 +429,7 @@ const Pages = {
                     ${UI.createFormGroup('Team Name', 'text', 'teamName', 'Your Team')}
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Account</button>
                 </form>
-                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray);">
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
                     Already have an account? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
                 </p>
             </div>
@@ -463,7 +465,7 @@ const Pages = {
         try {
             const tournaments = await API.getTournaments();
             mainContent.innerHTML = `
-                <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1rem;">Active Tournaments</h2>
+                <h2 style="color: var(--dark); margin-bottom: 1rem; font-weight: 700;">Active Tournaments</h2>
                 <div class="card-grid">
                     ${tournaments.length ? tournaments.map(t => UI.renderTournamentCard(t)).join('') : 
                     '<div class="empty-state"><p>No tournaments available</p></div>'}
@@ -474,7 +476,6 @@ const Pages = {
         }
     },
 
-    // UPDATED: Tournament Detail with Format Support
     async tournamentDetail(id) {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = '<div class="spinner"></div>';
@@ -485,7 +486,6 @@ const Pages = {
                 p => p.user?._id === Auth.getUser()?._id
             );
 
-            // Check if round-based format
             const isRoundBased = ['round_robin', 'league', 'swiss'].includes(tournament.format);
             const formatInfo = this.TOURNAMENT_FORMATS[tournament.format] || this.TOURNAMENT_FORMATS.single_elimination;
             
@@ -493,11 +493,10 @@ const Pages = {
                 <div class="tournament-detail-header">
                     <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
                         <div>
-                            <h1 style="font-family: Orbitron; color: var(--primary);">${tournament.name}</h1>
-                            <p style="color: var(--gray); margin-top: 0.5rem;">
+                            <h1 style="color: var(--dark); font-weight: 700;">${tournament.name}</h1>
+                            <p style="color: var(--gray-500); margin-top: 0.5rem;">
                                 ${tournament.description || ''}
-                                <span class="format-badge" style="background: var(--glass); padding: 0.25rem 0.75rem; border-radius: 20px; margin-left: 0.5rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem;">
-                                    <span>${formatInfo.icon}</span>
+                                <span class="format-badge">
                                     <span>${formatInfo.name}</span>
                                 </span>
                             </p>
@@ -534,7 +533,7 @@ const Pages = {
                     ${tournament.whatsappLink ? `
                         <div style="margin-top: 1.5rem;">
                             <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn">
-                                📱 Join Tournament WhatsApp Group
+                                Join Tournament WhatsApp Group
                             </a>
                         </div>
                     ` : ''}
@@ -542,10 +541,10 @@ const Pages = {
 
                 <div class="tournament-tabs">
                     <button class="tab-btn active" onclick="Pages.switchTab('${isRoundBased ? 'standings' : 'bracket'}')">
-                        ${isRoundBased ? '📊 Standings' : '🏆 Bracket'}
+                        ${isRoundBased ? 'Standings' : 'Bracket'}
                     </button>
-                    <button class="tab-btn" onclick="Pages.switchTab('players')">👥 Players</button>
-                    <button class="tab-btn" onclick="Pages.switchTab('matches')">⚽ Matches</button>
+                    <button class="tab-btn" onclick="Pages.switchTab('players')">Players</button>
+                    <button class="tab-btn" onclick="Pages.switchTab('matches')">Matches</button>
                 </div>
 
                 <div id="tab-${isRoundBased ? 'standings' : 'bracket'}" class="tab-content active">
@@ -574,55 +573,50 @@ const Pages = {
         document.getElementById(`tab-${tabName}`).classList.add('active');
     },
 
-    // NEW: Render Standings for Round-Based Formats
     renderStandings(tournament) {
         if (!tournament.standings || tournament.standings.length === 0) {
             return `
                 <div class="empty-state">
                     <p>Standings will appear once matches are played</p>
-                    ${tournament.status === 'ongoing' ? '<p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Matches are in progress...</p>' : ''}
+                    ${tournament.status === 'ongoing' ? '<p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">Matches are in progress...</p>' : ''}
                 </div>
             `;
         }
 
         return `
-            <div class="standings-container" style="background: var(--glass); border-radius: 12px; overflow: hidden; margin-top: 1rem;">
+            <div class="standings-container">
                 <table class="standings-table" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr style="background: rgba(255,255,255,0.05);">
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">#</th>
-                            <th style="padding: 1rem; text-align: left; font-family: Orbitron; font-size: 0.85rem;">Player</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">P</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">W</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">D</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">L</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GF</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GA</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem;">GD</th>
-                            <th style="padding: 1rem; text-align: center; font-family: Orbitron; font-size: 0.85rem; color: var(--accent);">PTS</th>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>P</th>
+                            <th>W</th>
+                            <th>D</th>
+                            <th>L</th>
+                            <th>GF</th>
+                            <th>GA</th>
+                            <th>GD</th>
+                            <th>PTS</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${tournament.standings.map((s, i) => `
-                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i < 3 ? `background: ${i === 0 ? 'rgba(255,215,0,0.1)' : i === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${s.player?._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important; border-left: 3px solid var(--primary);' : ''}">
-                                <td style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron;">${s.rank}</td>
-                                <td style="padding: 0.75rem;">
+                            <tr class="${i < 3 ? 'rank-' + (i + 1) : ''} ${s.player?._id === Auth.getUser()?._id ? 'highlight-user' : ''}">
+                                <td>${s.rank}</td>
+                                <td>
                                     <strong>${s.player?.username || 'Unknown'}</strong>
-                                    ${s.player?.teamName ? `<br><small style="color: var(--gray);">${s.player.teamName}</small>` : ''}
-                                    ${s.player?._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
+                                    ${s.player?.teamName ? `<br><small>${s.player.teamName}</small>` : ''}
+                                    ${s.player?._id === Auth.getUser()?._id ? '<span class="you-badge">(You)</span>' : ''}
                                 </td>
-                                <td style="padding: 0.75rem; text-align: center;">${s.played}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${s.wins}</td>
-                                <td style="padding: 0.75rem; text-align: center;">${s.draws}</td>
-                                <td style="padding: 0.75rem; text-align: center; color: var(--danger);">${s.losses}</td>
-                                <td style="padding: 0.75rem; text-align: center;">${s.goalsFor}</td>
-                                <td style="padding: 0.75rem; text-align: center;">${s.goalsAgainst}</td>
-                                <td style="padding: 0.75rem; text-align: center; ${s.goalDifference > 0 ? 'color: var(--success);' : s.goalDifference < 0 ? 'color: var(--danger);' : ''}; font-weight: 500;">
-                                    ${s.goalDifference > 0 ? '+' : ''}${s.goalDifference}
-                                </td>
-                                <td style="padding: 0.75rem; text-align: center; font-size: 1.1rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
-                                    ${s.points}
-                                </td>
+                                <td>${s.played}</td>
+                                <td class="text-success">${s.wins}</td>
+                                <td>${s.draws}</td>
+                                <td class="text-danger">${s.losses}</td>
+                                <td>${s.goalsFor}</td>
+                                <td>${s.goalsAgainst}</td>
+                                <td class="${s.goalDifference > 0 ? 'text-success' : s.goalDifference < 0 ? 'text-danger' : ''}">${s.goalDifference > 0 ? '+' : ''}${s.goalDifference}</td>
+                                <td class="points">${s.points}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -631,7 +625,6 @@ const Pages = {
         `;
     },
 
-    // FIXED: Updated renderBracket to handle API response structure
     async renderBracket(tournamentId) {
         if (!Auth.isAuthenticated()) {
             return '<div class="empty-state"><p>Login to view bracket</p></div>';
@@ -639,8 +632,6 @@ const Pages = {
 
         try {
             const data = await API.getTournamentBracket(tournamentId);
-            
-            // Handle API response structure (object with rounds array)
             const rounds = data.rounds || data;
             
             if (!rounds || rounds.length === 0) {
@@ -662,7 +653,7 @@ const Pages = {
                                         <span class="player-name">${match.player2?.username || 'TBD'}</span>
                                         <span class="player-score">${match.score2 ?? '-'}</span>
                                     </div>
-                                    ${match.status === 'completed' ? '<div class="match-status">✓</div>' : ''}
+                                    ${match.status === 'completed' ? '<div class="match-status-check"></div>' : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -697,7 +688,7 @@ const Pages = {
                                 <td>${idx + 1}</td>
                                 <td>${p.user?.username || 'Unknown'}</td>
                                 <td>${p.user?.teamName || '-'}</td>
-                                <td>${p.paid ? '✅ Paid' : '⏳ Pending'}</td>
+                                <td>${p.paid ? '<span class="status-paid">Paid</span>' : '<span class="status-pending">Pending</span>'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -706,12 +697,10 @@ const Pages = {
         `;
     },
 
-        async renderMatches(tournamentId, format) {
+    async renderMatches(tournamentId, format) {
         try {
             const tournament = await API.getTournament(tournamentId);
             let matches = tournament.matches || [];
-            
-            // Filter out matches that don't have any players yet (future bracket matches)
             matches = matches.filter(match => match.player1 !== null || match.player2 !== null);
             
             if (matches.length === 0) {
@@ -722,8 +711,7 @@ const Pages = {
 
             return `
                 <div class="matches-list">
-                    ${matches.map((match, idx) => {
-                        // Handle populated player data
+                    ${matches.map((match) => {
                         const player1 = match.player1;
                         const player2 = match.player2;
                         const winner = match.winner;
@@ -739,49 +727,39 @@ const Pages = {
                         const winnerName = winner?.username;
 
                         return `
-                            <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; ${isMyMatch ? 'border: 2px solid var(--primary);' : ''}">
-                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; text-transform: uppercase; background: ${status === 'completed' ? 'var(--success)' : status === 'ongoing' ? 'var(--warning)' : 'var(--gray)'};">
-                                                ${status}
-                                            </span>
-                                            ${isRoundBased ? `<span style="font-size: 0.75rem; color: var(--gray);">Round ${round}</span>` : ''}
-                                            ${match.matchNumber ? `<span style="font-size: 0.75rem; color: var(--gray);">#${match.matchNumber}</span>` : ''}
-                                            ${isMyMatch ? '<span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">YOUR MATCH</span>' : ''}
-                                        </div>
-                                        
-                                        <div style="display: flex; align-items: center; gap: 0.75rem; font-family: Orbitron; flex-wrap: wrap;">
-                                            <span style="font-size: 1rem; ${winner?._id === player1?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player1?._id ? 'opacity: 0.6;' : ''}">
-                                                ${p1Name}
-                                            </span>
-                                            
-                                            <span style="font-size: 1.1rem; color: var(--accent); font-weight: bold;">
-                                                ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
-                                            </span>
-                                            
-                                            <span style="font-size: 1rem; ${winner?._id === player2?._id ? 'color: var(--success); font-weight: bold;' : winner && winner._id !== player2?._id ? 'opacity: 0.6;' : ''}">
-                                                ${p2Name}
-                                            </span>
-                                        </div>
-                                        
-                                        ${winnerName ? `
-                                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--success);">
-                                                ✅ Winner: ${winnerName}
-                                            </div>
-                                        ` : status === 'completed' && !winner ? `
-                                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--warning);">
-                                                ⚠️ Awaiting verification
-                                            </div>
-                                        ` : ''}
+                            <div class="match-card ${status} ${isMyMatch ? 'my-match' : ''}">
+                                <div class="match-card-header">
+                                    <div class="match-badges">
+                                        <span class="match-status-badge ${status}">${status}</span>
+                                        ${isRoundBased ? `<span class="match-round">Round ${round}</span>` : ''}
+                                        ${match.matchNumber ? `<span class="match-number">#${match.matchNumber}</span>` : ''}
+                                        ${isMyMatch ? '<span class="match-your">Your Match</span>' : ''}
                                     </div>
-                                    
-                                    ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
-                                        <button class="btn btn-primary" style="white-space: nowrap;" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${p1Name}', '${p2Name}')">
-                                            Submit Result
-                                        </button>
-                                    ` : ''}
                                 </div>
+                                
+                                <div class="match-players-row">
+                                    <span class="${winner?._id === player1?._id ? 'winner' : winner && winner._id !== player1?._id ? 'loser' : ''}">${p1Name}</span>
+                                    <span class="match-vs">
+                                        ${status === 'completed' ? `${match.score1 ?? 0} - ${match.score2 ?? 0}` : 'VS'}
+                                    </span>
+                                    <span class="${winner?._id === player2?._id ? 'winner' : winner && winner._id !== player2?._id ? 'loser' : ''}">${p2Name}</span>
+                                </div>
+                                
+                                ${winnerName ? `
+                                    <div class="match-winner">
+                                        Winner: ${winnerName}
+                                    </div>
+                                ` : status === 'completed' && !winner ? `
+                                    <div class="match-awaiting">
+                                        Awaiting verification
+                                    </div>
+                                ` : ''}
+                                
+                                ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
+                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${p1Name}', '${p2Name}')">
+                                        Submit Result
+                                    </button>
+                                ` : ''}
                             </div>
                         `;
                     }).join('')}
@@ -821,7 +799,7 @@ const Pages = {
                     </aside>
 
                     <div class="dashboard-content">
-                        <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">Dashboard</h2>
+                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 700;">Dashboard</h2>
                         
                         <div class="stats-grid">
                             <div class="stat-card">
@@ -842,37 +820,37 @@ const Pages = {
                             </div>
                         </div>
 
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">My Tournaments</h3>
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">My Tournaments</h3>
                         ${tournaments?.length ? `
                             <div class="card-grid">
                                 ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
                             </div>
-                        ` : '<p style="color: var(--gray);">You haven\'t joined any tournaments yet.</p>'}
+                        ` : '<p style="color: var(--gray-500);">You haven\'t joined any tournaments yet.</p>'}
 
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">Upcoming Matches</h3>
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">Upcoming Matches</h3>
                         ${safeUpcoming.length ? safeUpcoming.map(m => `
                             <div class="tournament-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
                                         <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
-                                        <p style="color: var(--gray);">${m.tournament?.name || 'Unknown Tournament'}</p>
+                                        <p style="color: var(--gray-500);">${m.tournament?.name || 'Unknown Tournament'}</p>
                                     </div>
                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
                                 </div>
-                                <div style="margin-top: 1rem; padding: 1rem; background: var(--dark); border-radius: 10px;">
+                                <div class="efootball-id-box">
                                     <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                        <code style="background: var(--glass); padding: 0.5rem 1rem; border-radius: 5px; font-family: Orbitron;">${m.opponent?.efootballId || 'N/A'}</code>
+                                        <code>${m.opponent?.efootballId || 'N/A'}</code>
                                         <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent?.efootballId || ''}')">Copy</button>
                                     </div>
                                 </div>
                             </div>
-                        `).join('') : '<p style="color: var(--gray);">No upcoming matches.</p>'}
+                        `).join('') : '<p style="color: var(--gray-500);">No upcoming matches.</p>'}
                     </div>
                 </div>
             `;
         } catch (error) {  
-            console.error('❌ Dashboard error details:', error);
+            console.error('Dashboard error details:', error);
             mainContent.innerHTML = `<div class="empty-state"><p>Error loading dashboard: ${error.message}</p></div>`;
         }
     },
@@ -884,49 +862,45 @@ const Pages = {
         try {
             const players = await API.getLeaderboard();
             mainContent.innerHTML = `
-                <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 2rem;">🏆 Global Leaderboard</h2>
+                <h2 style="color: var(--dark); margin-bottom: 2rem; font-weight: 700;">Global Leaderboard</h2>
                 <div class="leaderboard-table responsive-leaderboard">
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <table>
                         <thead>
-                            <tr style="background: rgba(255,255,255,0.05);">
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Rank</th>
-                                <th style="padding: 1rem; text-align: left; font-family: Orbitron; color: var(--gray);">Player</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Played</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">W</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">L</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">Win%</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GF</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--gray);">GA</th>
-                                <th style="padding: 1rem; text-align: center; font-family: Orbitron; color: var(--accent);">Points</th>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Played</th>
+                                <th>W</th>
+                                <th>L</th>
+                                <th>Win%</th>
+                                <th>GF</th>
+                                <th>GA</th>
+                                <th>Points</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${players.map((p, idx) => `
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${idx < 3 ? `background: ${idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(205,127,50,0.1)'};` : ''} ${p._id === Auth.getUser()?._id ? 'background: rgba(76,175,80,0.15) !important;' : ''}">
-                                    <td data-label="Rank" style="padding: 0.75rem; text-align: center; font-weight: bold; font-family: Orbitron; font-size: 1.1rem; color: ${idx < 3 ? 'var(--accent)' : 'var(--light)'};">
-                                        ${idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : p.rank}
+                                <tr class="${idx < 3 ? 'rank-' + (idx + 1) : ''} ${p._id === Auth.getUser()?._id ? 'highlight-user' : ''}">
+                                    <td class="rank-cell">${p.rank || (idx + 1)}</td>
+                                    <td>
+                                        <strong>${p.username}</strong>
+                                        ${p.teamName ? `<br><small>${p.teamName}</small>` : ''}
+                                        ${p.efootballId ? `<br><small class="efootball-id">ID: ${p.efootballId}</small>` : ''}
+                                        ${p._id === Auth.getUser()?._id ? '<span class="you-badge">(You)</span>' : ''}
                                     </td>
-                                    <td data-label="Player" style="padding: 0.75rem;">
-                                        <strong style="color: var(--light); font-size: 1.05rem;">${p.username}</strong>
-                                        ${p.teamName ? `<br><small style="color: var(--gray);">${p.teamName}</small>` : ''}
-                                        ${p.efootballId ? `<br><small style="color: var(--primary); font-family: Orbitron;">ID: ${p.efootballId}</small>` : ''}
-                                        ${p._id === Auth.getUser()?._id ? '<span style="color: var(--primary); font-size: 0.8rem; margin-left: 0.5rem;">(You)</span>' : ''}
-                                    </td>
-                                    <td data-label="Played" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.played}</td>
-                                    <td data-label="Wins" style="padding: 0.75rem; text-align: center; color: var(--success); font-weight: 500;">${p.wins}</td>
-                                    <td data-label="Losses" style="padding: 0.75rem; text-align: center; color: var(--danger);">${p.losses}</td>
-                                    <td data-label="Win%" style="padding: 0.75rem; text-align: center; color: var(--light); font-weight: 500;">${p.winRate}%</td>
-                                    <td data-label="GF" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsFor}</td>
-                                    <td data-label="GA" style="padding: 0.75rem; text-align: center; color: var(--light);">${p.goalsAgainst}</td>
-                                    <td data-label="Points" style="padding: 0.75rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: Orbitron;">
-                                        ${p.points}
-                                    </td>
+                                    <td>${p.played}</td>
+                                    <td class="text-success">${p.wins}</td>
+                                    <td class="text-danger">${p.losses}</td>
+                                    <td>${p.winRate}%</td>
+                                    <td>${p.goalsFor}</td>
+                                    <td>${p.goalsAgainst}</td>
+                                    <td class="points">${p.points}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
                 </div>
-                <p style="color: var(--gray); text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                <p style="color: var(--gray-500); text-align: center; margin-top: 1rem; font-size: 0.875rem;">
                     Points: 3 for win, 1 for loss | Updated from all tournament matches
                 </p>
             `;
@@ -956,7 +930,7 @@ const Pages = {
                     </aside>
 
                     <div class="dashboard-content">
-                        <h2 style="font-family: Orbitron; color: var(--primary); margin-bottom: 1.5rem;">
+                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 700;">
                             Admin Panel <span class="admin-badge">Admin</span>
                         </h2>
 
@@ -979,115 +953,105 @@ const Pages = {
                             </div>
                         </div>
 
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">
-                            💰 Payment Verifications (${pendingPayments?.length || 0})
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">
+                            Payment Verifications (${pendingPayments?.length || 0})
                         </h3>
                         ${pendingPayments?.length ? `
                             <div class="pending-payments">
                                 ${pendingPayments.map(p => `
-                                    <div class="payment-item" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                                        <div style="display: flex; gap: 1rem; align-items: center;">
-                                            <img src="${p.screenshotPath}" alt="Proof" class="payment-proof-img" style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; cursor: pointer;" onclick="window.open('${p.screenshotPath}', '_blank')">
+                                    <div class="payment-item">
+                                        <div class="payment-info">
+                                            <img src="${p.screenshotPath}" alt="Proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')">
                                             <div>
                                                 <strong>${p.user?.username || 'Unknown'}</strong>
-                                                <p style="color: var(--gray); font-size: 0.9rem; margin: 0;">
+                                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0;">
                                                     ${p.tournament?.name || 'Unknown Tournament'}<br>
                                                     ${UI.formatCurrency(p.amount)} | ${p.mpesaNumber}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div style="display: flex; gap: 0.5rem;">
-                                            <button class="btn btn-success" onclick="Pages.verifyPayment('${p._id}', 'approve')">✓ Approve</button>
-                                            <button class="btn btn-danger" onclick="Pages.verifyPayment('${p._id}', 'reject')">✗ Reject</button>
+                                        <div class="payment-actions">
+                                            <button class="btn btn-success" onclick="Pages.verifyPayment('${p._id}', 'approve')">Approve</button>
+                                            <button class="btn btn-danger" onclick="Pages.verifyPayment('${p._id}', 'reject')">Reject</button>
                                         </div>
                                     </div>
                                 `).join('')}
                             </div>
-                        ` : '<p style="color: var(--gray);">No pending payments.</p>'}
+                        ` : '<p style="color: var(--gray-500);">No pending payments.</p>'}
 
-                        <h3 style="font-family: Orbitron; color: var(--primary); margin: 2rem 0 1rem;">
-                            ⚽ Match Verifications (${pendingResults?.length || 0})
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">
+                            Match Verifications (${pendingResults?.length || 0})
                         </h3>
                         ${pendingResults?.length ? `
                             <div class="pending-results">
                                 ${pendingResults.map(r => `
-                                    <div class="result-item" style="background: var(--glass); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border-left: 4px solid ${r.status === 'disputed' ? 'var(--danger)' : 'var(--warning)'};">
-                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <div class="result-item ${r.status === 'disputed' ? 'disputed' : 'pending'}">
+                                        <div class="result-header">
                                             <div>
                                                 <strong>${r.tournament?.name || 'Unknown Tournament'}</strong>
-                                                <p style="color: var(--gray); font-size: 0.9rem; margin: 0.25rem 0;">
-                                                    Round ${r.round || '-'} | ${r.status === 'disputed' ? '🔥 DISPUTED' : '⏳ Waiting for opponent'}
+                                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0.25rem 0;">
+                                                    Round ${r.round || '-'} | ${r.status === 'disputed' ? 'DISPUTED' : 'Waiting for opponent'}
                                                 </p>
                                             </div>
-                                            <span style="font-size: 0.8rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${r.status === 'disputed' ? 'var(--danger)' : 'var(--warning)'};">
-                                                ${r.status === 'disputed' ? 'Disputed' : 'Pending'}
-                                            </span>
+                                            <span class="status-badge ${r.status}">${r.status === 'disputed' ? 'Disputed' : 'Pending'}</span>
                                         </div>
                                         
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player1?.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <div class="result-submissions">
+                                            <div class="submission ${r.player1?.submitted ? 'submitted' : ''}">
+                                                <div class="submission-header">
                                                     <strong>${r.player1?.user?.username || 'Player 1'}</strong>
-                                                    ${r.player1?.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                    ${r.player1?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
                                                 </div>
                                                 ${r.player1?.submitted ? `
-                                                    <div style="font-family: Orbitron; font-size: 1.1rem;">
-                                                        ${r.player1?.submission?.score1} - ${r.player1?.submission?.score2}
-                                                    </div>
-                                                    <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
-                                                        Winner: ${r.player1?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}
-                                                    </div>
-                                                ` : '<span style="color: var(--gray);">Not submitted</span>'}
+                                                    <div class="submission-score">${r.player1?.submission?.score1} - ${r.player1?.submission?.score2}</div>
+                                                    <div class="submission-winner">Winner: ${r.player1?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
+                                                ` : '<span class="not-submitted">Not submitted</span>'}
                                             </div>
 
-                                            <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; ${r.player2?.submitted ? 'border: 1px solid var(--success)' : 'opacity: 0.6'};">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                            <div class="submission ${r.player2?.submitted ? 'submitted' : ''}">
+                                                <div class="submission-header">
                                                     <strong>${r.player2?.user?.username || 'Player 2'}</strong>
-                                                    ${r.player2?.submitted ? '<span style="color: var(--success);">✓</span>' : '<span style="color: var(--gray);">⏳</span>'}
+                                                    ${r.player2?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
                                                 </div>
                                                 ${r.player2?.submitted ? `
-                                                    <div style="font-family: Orbitron; font-size: 1.1rem;">
-                                                        ${r.player2?.submission?.score1} - ${r.player2?.submission?.score2}
-                                                    </div>
-                                                    <div style="color: var(--gray); font-size: 0.8rem; margin-top: 0.25rem;">
-                                                        Winner: ${r.player2?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}
-                                                    </div>
-                                                ` : '<span style="color: var(--gray);">Not submitted</span>'}
+                                                    <div class="submission-score">${r.player2?.submission?.score1} - ${r.player2?.submission?.score2}</div>
+                                                    <div class="submission-winner">Winner: ${r.player2?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
+                                                ` : '<span class="not-submitted">Not submitted</span>'}
                                             </div>
                                         </div>
 
                                         ${r.status === 'disputed' ? `
-                                            <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,0,0,0.1); border-radius: 8px;">
-                                                <p style="color: var(--danger); margin-bottom: 0.75rem; font-weight: bold;">⚠️ Results do not match!</p>
-                                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <div class="dispute-actions">
+                                                <p class="dispute-warning">Results do not match!</p>
+                                                <div class="action-buttons">
                                                     <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
-                                                        ✓ ${r.player1?.user?.username} Correct
+                                                        ${r.player1?.user?.username} Correct
                                                     </button>
                                                     <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
-                                                        ✓ ${r.player2?.user?.username} Correct
+                                                        ${r.player2?.user?.username} Correct
                                                     </button>
                                                     <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
-                                                        ⚖️ Custom
+                                                        Custom
                                                     </button>
                                                     <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
-                                                        🔍 Advancement Debug
+                                                        Debug
                                                     </button>
                                                 </div>
                                             </div>
                                         ` : `
-                                            <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">
-                                                ${r.disputeReason}
+                                            <p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">
+                                                ${r.disputeReason || ''}
                                             </p>
                                             <div style="margin-top: 0.75rem;">
                                                 <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
-                                                    🔍 Advancement Debug
+                                                    Debug
                                                 </button>
                                             </div>
                                         `}
                                     </div>
                                 `).join('')}
                             </div>
-                        ` : '<p style="color: var(--gray);">No matches need verification.</p>'}
+                        ` : '<p style="color: var(--gray-500);">No matches need verification.</p>'}
                     </div>
                 </div>
             `;
@@ -1096,34 +1060,31 @@ const Pages = {
         }
     },
 
-    // NEW: Create Tournament with Format Selection
     showCreateTournamentModal() {
         const content = `
             <div class="modal-header">
                 <h3>Create New Tournament</h3>
-                <button class="close-btn" onclick="UI.closeModal()">×</button>
+                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
             </div>
             <form id="createTournamentForm" style="padding: 1.5rem;">
                 ${UI.createFormGroup('Tournament Name', 'text', 'name', 'eFootball Championship')}
                 ${UI.createFormGroup('Description', 'text', 'description', 'Brief description')}
                 
-                <div class="form-group" style="margin-bottom: 1rem;">
+                <div class="form-group">
                     <label>Tournament Format</label>
-                    <select id="formatSelect" name="format" onchange="Pages.updateFormatSettings()" style="width: 100%; padding: 0.75rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px; font-size: 1rem;">
-                        <option value="single_elimination">⚔️ Single Elimination - Lose once = out</option>
-                        <option value="double_elimination">🛡️ Double Elimination - Two lives</option>
-                        <option value="round_robin">🔄 Round Robin - Everyone plays everyone</option>
-                        <option value="swiss">🇨🇭 Swiss System - Chess style</option>
-                        <option value="league">🏆 League - Season long</option>
+                    <select id="formatSelect" name="format" onchange="Pages.updateFormatSettings()">
+                        <option value="single_elimination">Single Elimination - Lose once = out</option>
+                        <option value="double_elimination">Double Elimination - Two lives</option>
+                        <option value="round_robin">Round Robin - Everyone plays everyone</option>
+                        <option value="swiss">Swiss System - Chess style</option>
+                        <option value="league">League - Season long</option>
                     </select>
-                    <p id="formatDescription" style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">
+                    <p id="formatDescription" style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">
                         Fast tournament. Players eliminated after one loss.
                     </p>
                 </div>
 
-                <div id="dynamicSettings" style="margin: 1rem 0; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                    <!-- Dynamic settings loaded here -->
-                </div>
+                <div id="dynamicSettings"></div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     ${UI.createFormGroup('Entry Fee (KES)', 'number', 'entryFee', '100')}
@@ -1139,7 +1100,7 @@ const Pages = {
         `;
 
         const modal = UI.showModal(content);
-        Pages.updateFormatSettings(); // Initialize settings
+        Pages.updateFormatSettings();
 
         document.getElementById('createTournamentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1190,27 +1151,27 @@ const Pages = {
 
         const settingsHTML = {
             single_elimination: `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Games per Match</label>
-                        <select id="bestOf" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Games per Match</label>
+                        <select id="bestOf">
                             <option value="1">1 game (Bo1)</option>
                             <option value="3">3 games (Bo3)</option>
                             <option value="5">5 games (Bo5)</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin: 0; display: flex; align-items: center; padding-top: 1.5rem;">
-                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.9rem;">
-                            <input type="checkbox" id="bronzeMatch" style="margin-right: 0.5rem;">
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="bronzeMatch">
                             3rd Place Match
                         </label>
                     </div>
                 </div>
             `,
             double_elimination: `
-                <div class="form-group" style="margin: 0;">
-                    <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Games per Match</label>
-                    <select id="bestOf" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                <div class="form-group">
+                    <label>Games per Match</label>
+                    <select id="bestOf">
                         <option value="1">1 game (Bo1)</option>
                         <option value="3">3 games (Bo3)</option>
                         <option value="5">5 games (Bo5)</option>
@@ -1218,50 +1179,50 @@ const Pages = {
                 </div>
             `,
             round_robin: `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Times Each Pair Plays</label>
-                        <input type="number" id="rounds" min="1" max="4" value="1" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Times Each Pair Plays</label>
+                        <input type="number" id="rounds" min="1" max="4" value="1">
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
-                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    <div class="form-group">
+                        <label>Points for Win</label>
+                        <input type="number" id="pointsWin" value="3">
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Draw</label>
-                        <input type="number" id="pointsDraw" value="1" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Points for Draw</label>
+                        <input type="number" id="pointsDraw" value="1">
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Loss</label>
-                        <input type="number" id="pointsLoss" value="0" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    <div class="form-group">
+                        <label>Points for Loss</label>
+                        <input type="number" id="pointsLoss" value="0">
                     </div>
                 </div>
             `,
             swiss: `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Number of Rounds</label>
-                        <input type="number" id="swissRounds" min="3" max="12" value="5" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
-                        <small style="color: var(--gray); font-size: 0.8rem;">Recommended: log₂(players) + 1</small>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Number of Rounds</label>
+                        <input type="number" id="swissRounds" min="3" max="12" value="5">
+                        <small>Recommended: log₂(players) + 1</small>
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
-                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    <div class="form-group">
+                        <label>Points for Win</label>
+                        <input type="number" id="pointsWin" value="3">
                     </div>
                 </div>
             `,
             league: `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Times Each Pair Plays</label>
-                        <input type="number" id="rounds" min="1" max="4" value="2" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
-                        <small style="color: var(--gray); font-size: 0.8rem;">Home & Away = 2</small>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Times Each Pair Plays</label>
+                        <input type="number" id="rounds" min="1" max="4" value="2">
+                        <small>Home & Away = 2</small>
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="display: block; margin-bottom: 0.25rem; color: var(--gray); font-size: 0.9rem;">Points for Win</label>
-                        <input type="number" id="pointsWin" value="3" style="width: 100%; padding: 0.5rem; background: var(--dark); border: 1px solid rgba(255,255,255,0.1); color: var(--light); border-radius: 5px;">
+                    <div class="form-group">
+                        <label>Points for Win</label>
+                        <input type="number" id="pointsWin" value="3">
                     </div>
                 </div>
             `
@@ -1290,31 +1251,31 @@ const Pages = {
         const content = `
             <div class="modal-header">
                 <h3>Custom Match Resolution</h3>
-                <button class="close-btn" onclick="UI.closeModal()">×</button>
+                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
             </div>
             <form id="resolveForm" style="padding: 1.5rem;">
-                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="form-group" style="margin: 0;">
+                <div class="score-inputs">
+                    <div class="form-group">
                         <label>${p1} Score</label>
-                        <input type="number" name="score1" min="0" required style="text-align: center; font-size: 1.2rem;">
+                        <input type="number" name="score1" min="0" required>
                     </div>
-                    <span style="font-size: 1.5rem;">-</span>
-                    <div class="form-group" style="margin: 0;">
+                    <span>-</span>
+                    <div class="form-group">
                         <label>${p2} Score</label>
-                        <input type="number" name="score2" min="0" required style="text-align: center; font-size: 1.2rem;">
+                        <input type="number" name="score2" min="0" required>
                     </div>
                 </div>
                 
-                <div class="form-group" style="margin-bottom: 1rem;">
+                <div class="form-group">
                     <label>Winner</label>
-                    <select name="winner" required style="width: 100%;">
+                    <select name="winner" required>
                         <option value="">Select Winner</option>
                         <option value="player1">${p1}</option>
                         <option value="player2">${p2}</option>
                     </select>
                 </div>
                 
-                <div class="form-group" style="margin-bottom: 1.5rem;">
+                <div class="form-group">
                     <label>Reason/Notes</label>
                     <textarea name="reason" rows="2" placeholder="Why are you overriding the submitted results?"></textarea>
                 </div>
@@ -1361,48 +1322,34 @@ const Pages = {
             const content = `
                 <div class="modal-header">
                     <h3>Advancement Debug</h3>
-                    <button class="close-btn" onclick="UI.closeModal()">×</button>
+                    <button class="close-btn" onclick="UI.closeModal()">&times;</button>
                 </div>
                 <div style="padding: 1rem 1.5rem 1.5rem;">
-                    <p style="color: var(--gray); margin-bottom: 1rem;">
+                    <p style="color: var(--gray-500); margin-bottom: 1rem;">
                         ${data.tournament?.name || 'Tournament'} (${data.tournament?.format || 'unknown'})
                     </p>
 
-                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.8rem;">
+                    <div class="debug-box">
                         <strong>Current Match</strong>
-                        <div style="margin-top: 0.4rem; color: var(--gray);">
-                            Round ${current.round} • Match #${current.matchNumber} • ${current.status}
-                        </div>
-                        <div style="margin-top: 0.4rem;">
-                            ${current.player1?.username || 'TBD'} vs ${current.player2?.username || 'TBD'}
-                        </div>
-                        <div style="margin-top: 0.4rem; color: var(--primary);">
-                            Winner: ${current.winner?.username || 'None'}
-                        </div>
+                        <div>Round ${current.round} - Match #${current.matchNumber} - ${current.status}</div>
+                        <div>${current.player1?.username || 'TBD'} vs ${current.player2?.username || 'TBD'}</div>
+                        <div>Winner: ${current.winner?.username || 'None'}</div>
                     </div>
 
-                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.8rem;">
+                    <div class="debug-box">
                         <strong>Computed Next Match (Logic)</strong>
                         ${computed ? `
-                            <div style="margin-top: 0.4rem; color: var(--gray);">
-                                Round ${computed.round} • Match #${computed.matchNumber} • ${computed.status}
-                            </div>
-                            <div style="margin-top: 0.4rem;">
-                                ${(computed.player1?.username || computed.player1 || 'TBD')} vs ${(computed.player2?.username || computed.player2 || 'TBD')}
-                            </div>
-                        ` : '<div style="margin-top: 0.4rem; color: var(--warning);">No next match (possibly final or missing winner)</div>'}
+                            <div>Round ${computed.round} - Match #${computed.matchNumber} - ${computed.status}</div>
+                            <div>${computed.player1?.username || computed.player1 || 'TBD'} vs ${computed.player2?.username || computed.player2 || 'TBD'}</div>
+                        ` : '<div>No next match (possibly final or missing winner)</div>'}
                     </div>
 
-                    <div style="background: var(--glass); border-radius: 10px; padding: 0.9rem;">
+                    <div class="debug-box">
                         <strong>Persisted Next Match (DB)</strong>
                         ${persisted ? `
-                            <div style="margin-top: 0.4rem; color: var(--gray);">
-                                Round ${persisted.round} • Match #${persisted.matchNumber} • ${persisted.status}
-                            </div>
-                            <div style="margin-top: 0.4rem;">
-                                ${persisted.player1?.username || 'TBD'} vs ${persisted.player2?.username || 'TBD'}
-                            </div>
-                        ` : '<div style="margin-top: 0.4rem; color: var(--warning);">No persisted next match found</div>'}
+                            <div>Round ${persisted.round} - Match #${persisted.matchNumber} - ${persisted.status}</div>
+                            <div>${persisted.player1?.username || 'TBD'} vs ${persisted.player2?.username || 'TBD'}</div>
+                        ` : '<div>No persisted next match found</div>'}
                     </div>
                 </div>
             `;
@@ -1418,7 +1365,7 @@ const Pages = {
         try {
             UI.showLoading();
             await API.verifyPayment(paymentId, action);
-            UI.showToast(`Payment ${action}d successfully`, 'success');
+            UI.showToast('Payment ' + action + 'd successfully', 'success');
             Router.navigate('admin');
         } catch (error) {
             UI.showToast(error.message, 'error');
