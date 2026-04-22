@@ -91,8 +91,20 @@ mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
 })
-.then(() => {
+.then(async () => {
     console.log('✅ MongoDB Connected');
+    
+    // FIX: Drop old non-sparse efootballId index to allow multiple null values
+    try {
+        await mongoose.connection.collection('users').dropIndex('efootballId_1');
+        console.log('✅ Dropped old efootballId index');
+    } catch (err) {
+        if (err.code === 27) {
+            console.log('ℹ️ efootballId_1 index already clean or does not exist');
+        } else {
+            console.error('⚠️ Index drop error:', err.message);
+        }
+    }
     
     // Connection event handlers
     mongoose.connection.on('error', (err) => {
