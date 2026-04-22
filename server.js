@@ -17,7 +17,32 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
-app.use(helmet());
+
+// Configure Helmet with a custom CSP to allow inline event handlers
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "script-src": ["'self'", "'unsafe-inline'"],
+            "script-src-attr": ["'unsafe-inline'"],
+            "img-src": ["'self'", "data:", "res.cloudinary.com", "*.cloudinary.com"],
+            "connect-src": ["'self'", "https://efootball-platform.onrender.com"]
+        },
+    },
+}));
+
+// Debug helper for route handlers - Moved up to be active BEFORE loading routes
+const originalPost = express.Router.prototype.post;
+express.Router.prototype.post = function(path, ...handlers) {
+    handlers.forEach((handler, i) => {
+        if (typeof handler !== 'function') {
+            console.error(`❌ Invalid handler at position ${i} for POST ${path}`);
+            console.error('   Type:', typeof handler);
+            console.error('   Value:', handler);
+        }
+    });
+    return originalPost.call(this, path, ...handlers);
+};
 
 // Body parsing with limits
 app.use(express.json({ limit: '10mb' }));
@@ -127,16 +152,3 @@ process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err);
     process.exit(1);
 });
-
-// Add this BEFORE loading routes
-const originalPost = express.Router.prototype.post;
-express.Router.prototype.post = function(path, ...handlers) {
-    handlers.forEach((handler, i) => {
-        if (typeof handler !== 'function') {
-            console.error(`❌ Invalid handler at position ${i} for POST ${path}`);
-            console.error('   Type:', typeof handler);
-            console.error('   Value:', handler);
-        }
-    });
-    return originalPost.call(this, path, ...handlers);
-};
