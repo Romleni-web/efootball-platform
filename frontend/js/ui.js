@@ -385,11 +385,13 @@ const UI = {
                     <div class="bracket-match" data-match-id="${match._id}">
                         <div class="match-players">
                             <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''}">
-                                ${p1Name}
+                                <strong>${p1Name}</strong>
+                                ${match.player1?.efootballId ? `<br><small class="efootball-id">ID: ${match.player1.efootballId}</small>` : ''}
                             </div>
                             <div class="vs">VS</div>
                             <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''}">
-                                ${p2Name}
+                                <strong>${p2Name}</strong>
+                                ${match.player2?.efootballId ? `<br><small class="efootball-id">ID: ${match.player2.efootballId}</small>` : ''}
                             </div>
                         </div>
                         ${isCompleted && match.score1 !== null ? `

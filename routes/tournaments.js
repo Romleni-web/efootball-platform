@@ -154,6 +154,22 @@ router.post('/:id/generate-bracket', auth, adminOnly, async (req, res) => {
         tournament.currentRound = 1;
         await tournament.save();
 
+        // Robust Bye Processing: Recursively advance all matches that don't need a second player
+        let roundsProcessed = 0;
+        let matchesToAdvance = savedMatches.filter(m => m.status === 'completed' && m.winner);
+        
+        while (matchesToAdvance.length > 0 && roundsProcessed < 10) {
+            const currentMatches = [...matchesToAdvance];
+            matchesToAdvance = [];
+            for (const match of currentMatches) {
+                const nextMatch = await logic.advanceWinner(match);
+                if (nextMatch && nextMatch.status === 'completed' && nextMatch.winner) {
+                    matchesToAdvance.push(nextMatch);
+                }
+            }
+            roundsProcessed++;
+        }
+
         res.json({ 
             success: true,
             tournament: {

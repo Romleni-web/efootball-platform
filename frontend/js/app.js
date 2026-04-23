@@ -391,7 +391,16 @@ const Pages = {
             try {
                 UI.showLoading();
                 const result = await API.forgotPassword(formData.get('email'));
-                UI.showToast(result.message || 'If that email exists, a reset link has been sent.', 'success');
+                UI.showToast(result.message || 'Check your email for the reset link.', 'success');
+                
+                if (result.debugLink) {
+                    const container = document.getElementById('resetLinkContainer');
+                    const field = document.getElementById('resetLinkField');
+                    if (container && field) {
+                        container.style.display = 'block';
+                        field.value = result.debugLink;
+                    }
+                }
             } catch (error) {
                 UI.showToast(error.message, 'error');
             } finally {
@@ -678,11 +687,25 @@ const Pages = {
                             ${round.matches.map(match => `
                                 <div class="match ${match.status || ''}">
                                     <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''} ${!match.player1 ? 'tbd' : ''}">
-                                        <span class="player-name">${match.player1?.username || 'TBD'}</span>
+                                        <span class="player-name">
+                                            ${match.player1?.username || 'TBD'}
+                                            ${match.player1?.efootballId ? `
+                                                <br><small class="efootball-id" style="font-size: 0.7rem; opacity: 0.8;">
+                                                    ID: ${match.player1.efootballId}
+                                                </small>
+                                            ` : ''}
+                                        </span>
                                         <span class="player-score">${match.score1 ?? '-'}</span>
                                     </div>
                                     <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''} ${!match.player2 ? 'tbd' : ''}">
-                                        <span class="player-name">${match.player2?.username || 'TBD'}</span>
+                                        <span class="player-name">
+                                            ${match.player2?.username || 'TBD'}
+                                            ${match.player2?.efootballId ? `
+                                                <br><small class="efootball-id" style="font-size: 0.7rem; opacity: 0.8;">
+                                                    ID: ${match.player2.efootballId}
+                                                </small>
+                                            ` : ''}
+                                        </span>
                                         <span class="player-score">${match.score2 ?? '-'}</span>
                                     </div>
                                     ${match.status === 'completed' ? '<div class="match-status-check"></div>' : ''}

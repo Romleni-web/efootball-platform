@@ -147,7 +147,8 @@ router.post('/forgot-password', [
         }
 
         res.json({
-            message: 'If that email exists, a password reset link has been sent.'
+            message: 'If that email exists, a password reset link has been generated.',
+            ...(process.env.NODE_ENV !== 'production' && { debugLink: resetLink })
         });
     } catch (error) {
         console.error('Forgot password error:', error);

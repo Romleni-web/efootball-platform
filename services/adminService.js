@@ -63,12 +63,46 @@ const resolveMatchResult = async (matchId, adminUser, resolutionData) => {
     return match;
 };
 
+/**
+ * Self-healing function to fix stuck brackets.
+ * Iterates through all completed matches and ensures winners have advanced.
+ */
+const syncTournamentBracket = async (tournamentId) => {
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) throw new Error('Tournament not found');
+
+    const matches = await Match.find({ tournament: tournamentId });
+    const logic = TournamentLogicFactory.create(tournament);
+
+    console.log(`Syncing bracket for: ${tournament.name}`);
+    
+    // 1. Process all completed matches to ensure advancement
+    const completedMatches = matches.filter(m => ['completed', 'bye'].includes(m.status) && m.winner);
+    
+    // Sort by round/matchNumber to ensure we advance in the correct order
+    completedMatches.sort((a, b) => (a.round - b.round) || (a.matchNumber - b.matchNumber));
+
+    for (const match of completedMatches) {
+        await logic.advanceWinner(match);
+        if (tournament.format === 'double_elimination' && logic.advanceLoser) {
+            await logic.advanceLoser(match);
+        }
+    }
+
+    // 2. Update standings if it's a round-based tournament
+    if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
+        tournament.standings = logic.calculateStandings();
+        await tournament.save();
+    }
+
+    return { success: true, processedMatches: completedMatches.length };
+};
+
 const calculatePrize = (pool, rank, distribution) => {
-    const percentages = [
         distribution.first || 50, 
         distribution.second || 30, 
         distribution.third || 20
-    ];
+;
     return Math.floor(pool * (percentages[rank - 1] || 0) / 100);
 };
 

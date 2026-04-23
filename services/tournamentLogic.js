@@ -41,6 +41,13 @@ class TournamentLogic {
         return matches.every(m => ['completed', 'bye'].includes(m.status));
     }
 
+    _compareUsers(userA, userB) {
+        if (!userA || !userB) return false;
+        const idA = (userA._id || userA).toString();
+        const idB = (userB._id || userB).toString();
+        return idA === idB;
+    }
+
     _shuffleAndSeed(players) {
         return [...players].sort((a, b) => {
             if (a.seed && b.seed) return a.seed - b.seed;
@@ -156,13 +163,15 @@ class SingleEliminationLogic extends TournamentLogic {
 
     async advanceWinner(match) {
         if (!match.winner) return null;
-        const winnerId = match.winner?._id || match.winner;
+        const winnerId = (match.winner?._id || match.winner).toString();
         if (!winnerId) return null;
 
         // Handle bronze match for losers
+        let bronzeUpdate = null;
         if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
-            return this._advanceToBronze(match);
+            bronzeUpdate = await this._advanceToBronze(match);
         }
+        // Continue to advance winner even if bronze match was handled
 
         const nextMatchId = match.nextMatch?._id || match.nextMatch;
         if (!nextMatchId) return null;
@@ -199,8 +208,8 @@ class SingleEliminationLogic extends TournamentLogic {
         const bronzeMatch = await Match.findById(bronzeMatchId);
         if (!bronzeMatch || bronzeMatch.status === 'completed') return null;
 
-        const winnerId = match.winner?._id || match.winner;
-        const loser = match.player1.equals(winnerId) ? match.player2 : match.player1;
+        const winnerId = (match.winner?._id || match.winner).toString();
+        const loser = match.player1.toString() === winnerId ? match.player2 : match.player1;
         
         const updateData = {};
         if (!bronzeMatch.player1) {
@@ -763,7 +772,7 @@ class DoubleEliminationLogic extends TournamentLogic {
         const winnersChampion = match.player1;
         const losersChampion = match.player2;
         
-        if (match.winner.equals(winnersChampion)) {
+        if (this._compareUsers(match.winner, winnersChampion)) {
             await Match.findByIdAndUpdate(match._id, {
                 $set: { status: 'completed', isTournamentComplete: true }
             });
@@ -771,7 +780,7 @@ class DoubleEliminationLogic extends TournamentLogic {
         }
 
         if (resetMatch && !resetMatch.player1) {
-            await Match.findByIdAndUpdate(resetMatch._id, {
+            return await Match.findByIdAndUpdate(resetMatch._id, {
                 $set: {
                     player1: winnersChampion,
                     player2: losersChampion,
@@ -789,7 +798,7 @@ class DoubleEliminationLogic extends TournamentLogic {
         const losersNextMatchId = match.losersNextMatch?._id || match.losersNextMatch;
         if (!winnerId || !losersNextMatchId) return null;
         
-        const loser = match.player1.equals(winnerId) ? match.player2 : match.player1;
+        const loser = this._compareUsers(match.player1, winnerId) ? match.player2 : match.player1;
         const losersMatch = await Match.findById(losersNextMatchId);
         
         if (!losersMatch) return null;
