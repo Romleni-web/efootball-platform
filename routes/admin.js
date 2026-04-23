@@ -102,7 +102,14 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
                 submitted: !!m.submissions?.player2,
                 submission: m.submissions?.player2
             },
-            disputeReason: m.status === 'disputed' ? 'Results do not match' : null
+            conflicts: m.status === 'disputed' ? {
+                score: m.submissions.player1.score1 !== m.submissions.player2.score1 || 
+                       m.submissions.player1.score2 !== m.submissions.player2.score2,
+                winner: m.submissions.player1.winner !== m.submissions.player2.winner
+            } : null,
+            disputeReason: m.status === 'disputed' ? 'Results do not match' : null,
+            lastActivity: m.updatedAt,
+            isStale: (new Date() - m.updatedAt) > (30 * 60 * 1000) // Flag if 30 mins old
         }));
 
         res.json(formatted);

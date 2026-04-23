@@ -253,6 +253,11 @@ const UI = {
                     <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}')">
                         ${this.icons.eye} View ${isRoundBased ? 'Standings' : 'Bracket'}
                     </button>
+                    ${isRoundBased ? `
+                        <button class="btn btn-secondary" onclick="UI.regenerateRound('${tournament._id}', ${tournament.currentRound})">
+                            ${this.icons.refresh} Generate Next Round
+                        </button>
+                    ` : ''}
                 </div>
             `;
         }
@@ -268,6 +273,21 @@ const UI = {
             const result = await API.startTournament(tournamentId);
             UI.showToast(`Tournament started! ${result.tournament?.matchesGenerated || 0} matches generated.`, 'success');
             Router.navigate('dashboard');
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    async regenerateRound(tournamentId, currentRound) {
+        if (!confirm(`Generate pairings for the next round? Ensure all matches in Round ${currentRound} are verified.`)) return;
+        
+        try {
+            UI.showLoading();
+            const result = await API.regenerateRound(tournamentId, currentRound);
+            UI.showToast(`Success! Generated ${result.newMatches || 0} matches for the next round.`, 'success');
+            Router.navigate('admin');
         } catch (error) {
             UI.showToast(error.message, 'error');
         } finally {
@@ -360,48 +380,51 @@ const UI = {
     },
 
     renderBracket(bracketData) {
-        if (!bracketData || !bracketData.rounds) {
+        const rounds = bracketData?.rounds || (Array.isArray(bracketData) ? bracketData : null);
+        
+        if (!rounds || rounds.length === 0) {
             return '<div class="empty-state"><p>No bracket available</p></div>';
         }
 
-        let html = '<div class="bracket-container">';
+        let html = '<div class="bracket">';
         
-        bracketData.rounds.forEach(round => {
+        rounds.forEach((round, idx) => {
             html += `
-                <div class="bracket-round">
-                    <div class="round-title">${round.title || 'Round ' + round.round}</div>
-                    <div class="round-matches">
+                <div class="round">
+                    <h4 class="round-title">Round ${round.round || idx + 1}</h4>
             `;
             
             round.matches.forEach(match => {
-                const p1Name = match.player1?.username || 
-                               (typeof match.player1 === 'string' ? 'Player' : 'TBD');
-                const p2Name = match.player2?.username || 
-                               (typeof match.player2 === 'string' ? 'Player' : 'TBD');
-                
-                const isCompleted = match.status === 'completed';
-                
                 html += `
-                    <div class="bracket-match" data-match-id="${match._id}">
-                        <div class="match-players">
-                            <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''}">
-                                <strong>${p1Name}</strong>
-                                ${match.player1?.efootballId ? `<br><small class="efootball-id">ID: ${match.player1.efootballId}</small>` : ''}
-                            </div>
-                            <div class="vs">VS</div>
-                            <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''}">
-                                <strong>${p2Name}</strong>
-                                ${match.player2?.efootballId ? `<br><small class="efootball-id">ID: ${match.player2.efootballId}</small>` : ''}
-                            </div>
+                    <div class="match ${match.status || ''}" data-match-id="${match._id}">
+                        <div class="player ${match.winner?._id === match.player1?._id ? 'winner' : ''} ${!match.player1 ? 'tbd' : ''}">
+                            <span class="player-name">
+                                ${match.player1?.username || 'TBD'}
+                                ${match.player1?.efootballId ? `
+                                    <br><small class="efootball-id" style="font-size: 0.7rem; opacity: 0.8;">
+                                        ID: ${match.player1.efootballId}
+                                    </small>
+                                ` : ''}
+                            </span>
+                            <span class="player-score">${match.score1 ?? '-'}</span>
                         </div>
-                        ${isCompleted && match.score1 !== null ? `
-                            <div class="match-result">${match.score1} - ${match.score2}</div>
-                        ` : ''}
+                        <div class="player ${match.winner?._id === match.player2?._id ? 'winner' : ''} ${!match.player2 ? 'tbd' : ''}">
+                            <span class="player-name">
+                                ${match.player2?.username || 'TBD'}
+                                ${match.player2?.efootballId ? `
+                                    <br><small class="efootball-id" style="font-size: 0.7rem; opacity: 0.8;">
+                                        ID: ${match.player2.efootballId}
+                                    </small>
+                                ` : ''}
+                            </span>
+                            <span class="player-score">${match.score2 ?? '-'}</span>
+                        </div>
+                        ${match.status === 'completed' ? '<div class="match-status-check"></div>' : ''}
                     </div>
                 `;
             });
             
-            html += '</div></div>';
+            html += '</div>';
         });
         
         html += '</div>';
@@ -411,6 +434,31 @@ const UI = {
     renderStandings(standingsData) {
         if (!standingsData || standingsData.length === 0) {
             return '<div class="empty-state"><p>Standings will appear once matches are played</p></div>';
+        }
+
+        // Check if this is a simple ranking (Elimination) or full stats (League)
+        const isFullStats = standingsData[0] && standingsData[0].played !== undefined;
+
+        if (!isFullStats) {
+            return `
+                <div class="leaderboard-table">
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${standingsData.map(s => `
+                                <tr class="rank-${s.rank}">
+                                    <td class="rank-cell">${s.rank}</td>
+                                    <td><strong>${s.player?.username || 'TBD'}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
         }
 
         return `
@@ -475,7 +523,7 @@ const UI = {
                 const isRoundBased = ['round_robin', 'league', 'swiss'].includes(data.format);
                 const content = isRoundBased && data.standings 
                     ? this.renderStandings(data.standings)
-                    : this.renderBracket(data.rounds);
+                    : this.renderBracket(data);
                 document.getElementById('bracketContent').innerHTML = content;
             })
             .catch(error => {
@@ -695,8 +743,13 @@ const UI = {
                     </div>
                     
                     <div class="form-group">
-                        <label>Upload Match Screenshot (Optional)</label>
+                        <label>Final Score Screenshot (Required)</label>
                         <input type="file" name="screenshot" accept="image/*">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Match History Screenshot (Required)</label>
+                        <input type="file" name="historyScreenshot" accept="image/*" required>
                     </div>
                     
                     <div class="form-group">

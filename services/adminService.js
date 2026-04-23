@@ -98,15 +98,57 @@ const syncTournamentBracket = async (tournamentId) => {
     return { success: true, processedMatches: completedMatches.length };
 };
 
+/**
+ * Manually triggers the generation of the next round pairings.
+ * Primarily used for Swiss and dynamic re-seeding formats.
+ */
+const regenerateRound = async (tournamentId, roundNumber) => {
+    const tournament = await Tournament.findById(tournamentId).populate('matches');
+    if (!tournament) throw new Error('Tournament not found');
+
+    const logic = TournamentLogicFactory.create(tournament);
+    
+    // Find any match in the round to use as a trigger for advancement logic
+    const roundMatch = tournament.matches.find(m => m.round === roundNumber && m.status === 'completed');
+    if (!roundMatch) throw new Error(`No completed matches found in round ${roundNumber} to trigger regeneration.`);
+
+    const nextMatches = await logic.advanceWinner(roundMatch);
+    
+    if (Array.isArray(nextMatches) && nextMatches.length > 0) {
+        const saved = await Match.insertMany(nextMatches);
+        tournament.matches.push(...saved.map(m => m._id));
+        tournament.currentRound = roundNumber + 1;
+        await tournament.save();
+        return { success: true, newMatches: saved.length };
+    }
+    
+    return { success: false, message: 'No new matches were generated for the next round.' };
+};
+
+const getPrizeDistributionList = async (tournamentId) => {
+    const tournament = await Tournament.findById(tournamentId).populate('winners.player');
+    if (!tournament || tournament.status !== 'finished') return [];
+
+    return tournament.winners.map(w => ({
+        username: w.player.username,
+        phoneNumber: w.player.phoneNumber || 'Not Set',
+        rank: w.rank,
+        amount: w.prize
+    }));
+};
+
 const calculatePrize = (pool, rank, distribution) => {
-        distribution.first || 50, 
+    const percentages = [
+        distribution.first || 50,
         distribution.second || 30, 
         distribution.third || 20
-;
+    ];
     return Math.floor(pool * (percentages[rank - 1] || 0) / 100);
 };
 
 module.exports = {
     resolveMatchResult,
-    calculatePrize
+    calculatePrize,
+    syncTournamentBracket,
+    regenerateRound
 };

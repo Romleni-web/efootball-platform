@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
@@ -113,6 +115,31 @@ if (missing.length > 0) {
     process.exit(1);
 }
 
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: corsOptions
+});
+
+// Real-time Chat & Updates Logic
+io.on('connection', (socket) => {
+    socket.on('join-global', () => socket.join('global'));
+    
+    socket.on('join-match', (matchId) => {
+        socket.join(`match_${matchId}`);
+    });
+
+    socket.on('send-message', (data) => {
+        const { roomId, message, username, type } = data;
+        const payload = {
+            username,
+            message,
+            timestamp: new Date(),
+            type
+        };
+        io.to(roomId).emit('new-message', payload);
+    });
+});
+
 // MongoDB connection with event handlers
 mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
@@ -141,7 +168,7 @@ mongoose.connect(process.env.MONGODB_URI, {
         console.warn('⚠️ MongoDB disconnected');
     });
     
-    app.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
     });
 })

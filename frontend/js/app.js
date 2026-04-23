@@ -160,6 +160,46 @@ function wireLegacyInlineHandlers(root = document) {
     });
 }
 
+const ChatUI = {
+    render(roomId, title = 'Global Chat') {
+        API.joinChat(roomId);
+        const containerId = `chat-${roomId}`;
+        
+        setTimeout(() => {
+            const form = document.getElementById(`form-${roomId}`);
+            const input = document.getElementById(`input-${roomId}`);
+            const messages = document.getElementById(`messages-${roomId}`);
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (input.value.trim()) {
+                    API.sendMessage(roomId, input.value);
+                    input.value = '';
+                }
+            });
+
+            API.socket.on('new-message', (data) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-msg';
+                msgDiv.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+                messages.appendChild(msgDiv);
+                messages.scrollTop = messages.scrollHeight;
+            });
+        }, 100);
+
+        return `
+            <div class="chat-container" id="${containerId}">
+                <div class="chat-header">${title}</div>
+                <div class="chat-messages" id="messages-${roomId}"></div>
+                <form class="chat-input-area" id="form-${roomId}">
+                    <input type="text" id="input-${roomId}" placeholder="Type a message..." required>
+                    <button type="submit">${UI.icons.arrowRight}</button>
+                </form>
+            </div>
+        `;
+    }
+};
+
 const Pages = {
     TOURNAMENT_FORMATS: {
         single_elimination: {
@@ -581,15 +621,16 @@ const Pages = {
                 </div>
 
                 <div class="tournament-tabs">
-                    <button class="tab-btn active" onclick="Pages.switchTab('${isRoundBased ? 'standings' : 'bracket'}')">
-                        ${isRoundBased ? 'Standings' : 'Bracket'}
+                    <button class="tab-btn active" onclick="Pages.switchTab('standings')">
+                        ${isRoundBased ? 'Standings' : 'Rankings'}
                     </button>
                     <button class="tab-btn" onclick="Pages.switchTab('players')">Players</button>
                     <button class="tab-btn" onclick="Pages.switchTab('matches')">Matches</button>
+                    ${!isRoundBased ? `<button class="tab-btn" onclick="Pages.switchTab('bracket')">Bracket</button>` : ''}
                 </div>
 
-                <div id="tab-${isRoundBased ? 'standings' : 'bracket'}" class="tab-content active">
-                    ${isRoundBased ? this.renderStandings(tournament) : await this.renderBracket(id)}
+                <div id="tab-standings" class="tab-content active">
+                    ${await this.renderTournamentLeaderboard(id, tournament)}
                 </div>
                 <div id="tab-players" class="tab-content">
                     ${this.renderPlayersList(tournament.registeredPlayers)}
@@ -597,6 +638,10 @@ const Pages = {
                 <div id="tab-matches" class="tab-content">
                     ${await this.renderMatches(id, tournament.format)}
                 </div>
+                ${!isRoundBased ? `
+                <div id="tab-bracket" class="tab-content">
+                    ${await this.renderBracket(id)}
+                </div>` : ''}
             `;
         } catch (error) {
             mainContent.innerHTML = `<div class="empty-state"><p>Tournament not found</p></div>`;
@@ -612,6 +657,17 @@ const Pages = {
             evt.target.classList.add('active');
         }
         document.getElementById(`tab-${tabName}`).classList.add('active');
+    },
+
+    async renderTournamentLeaderboard(id, tournament) {
+        try {
+            const data = await API.getTournamentBracket(id);
+            const standings = data.standings || (await API.authenticatedRequest(`/tournaments/${id}/standings`));
+            return UI.renderStandings(standings);
+        } catch (error) {
+            console.error('Leaderboard error:', error);
+            return '<div class="empty-state"><p>Leaderboard not available yet.</p></div>';
+        }
     },
 
     renderStandings(tournament) {
@@ -804,12 +860,14 @@ const Pages = {
                                     <div class="match-winner">
                                         Winner: ${winnerName}
                                     </div>
-                                ` : status === 'completed' && !winner ? `
-                                    <div class="match-awaiting">
-                                        Awaiting verification
-                                    </div>
                                 ` : ''}
                                 
+                                ${isMyMatch && status === 'scheduled' ? `
+                                    <div class="match-lobby-integration">
+                                        ${ChatUI.render(match._id, 'Match Lobby')}
+                                    </div>
+                                ` : ''}
+
                                 ${isMyMatch && status === 'scheduled' && player1 && player2 ? `
                                     <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${match._id}', '${tournamentId}', '${p1Name}', '${p2Name}')">
                                         Submit Result
@@ -1095,7 +1153,15 @@ const Pages = {
 
                                         ${r.status === 'disputed' ? `
                                             <div class="dispute-actions">
-                                                <p class="dispute-warning">Results do not match!</p>
+                                                <p class="dispute-warning">
+                                                    ${UI.icons.warning} Results do not match! 
+                                                    <span style="font-size: 0.75rem; opacity: 0.8;">
+                                                        (${r.conflicts.score ? 'Score Conflict' : ''} 
+                                                         ${r.conflicts.score && r.conflicts.winner ? '&' : ''} 
+                                                         ${r.conflicts.winner ? 'Winner Conflict' : ''})
+                                                    </span>
+                                                </p>
+                                                ${r.isStale ? `<p style="color: var(--danger); font-size: 0.75rem; font-weight: 700;">STALE: No activity for 30m</p>` : ''}
                                                 <div class="action-buttons">
                                                     <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
                                                         ${r.player1?.user?.username} Correct

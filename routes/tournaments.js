@@ -6,6 +6,7 @@ const Match = require('../models/Match');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
+const adminService = require('../services/adminService');
 
 // Auth middleware
 const auth = async (req, res, next) => {
@@ -186,6 +187,22 @@ router.post('/:id/generate-bracket', auth, adminOnly, async (req, res) => {
     }
 });
 
+// POST regenerate round - ADMIN ONLY
+router.post('/:id/regenerate-round', auth, adminOnly, async (req, res) => {
+    try {
+        const { round } = req.body;
+        const result = await adminService.regenerateRound(req.params.id, parseInt(round));
+        
+        res.json({
+            success: true,
+            ...result
+        });
+    } catch (error) {
+        console.error('Regenerate round error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // POST register for tournament - AUTH REQUIRED
 router.post('/:id/register', auth, async (req, res) => {
     const tournamentId = req.params.id;
@@ -304,12 +321,11 @@ router.get('/:id/standings', async (req, res) => {
 
         if (!tournament) return res.status(404).json({ message: 'Not found' });
         
-        if (!['round_robin', 'league', 'swiss'].includes(tournament.format)) {
-            return res.status(400).json({ message: 'Standings only for round-based formats' });
-        }
-
         const logic = TournamentLogicFactory.create(tournament);
-        const standings = logic.calculateStandings();
+        
+        // Use rankings for elimination, standings for round-based
+        const isRoundBased = ['round_robin', 'league', 'swiss'].includes(tournament.format);
+        const standings = isRoundBased ? logic.calculateStandings() : logic.getFinalRankings(tournament.matches);
 
         res.json(standings);
     } catch (error) {

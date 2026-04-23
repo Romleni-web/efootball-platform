@@ -3,6 +3,10 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:5000/api'
     : 'https://efootball-platform.onrender.com/api';
 
+const SOCKET_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000'
+    : 'https://efootball-platform.onrender.com';
+
 console.log('API URL:', API_BASE_URL); // Debug log
 
 const API = {
@@ -236,6 +240,14 @@ const API = {
     async startTournament(tournamentId) {
         return this.authenticatedRequest(`/admin/tournaments/${tournamentId}/start`, {
             method: 'POST'
+        });
+    },
+
+    async regenerateRound(tournamentId, round) {
+        return this.authenticatedRequest(`/tournaments/${tournamentId}/regenerate-round`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ round })
         });
     },
 

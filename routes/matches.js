@@ -9,7 +9,10 @@ const upload = require('../middleware/upload');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
 
 // POST /api/matches/:id/result - Dual submission system
-router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) => {
+router.post('/:id/result', auth, upload.fields([
+    { name: 'screenshot', maxCount: 1 },
+    { name: 'historyScreenshot', maxCount: 1 }
+]), async (req, res) => {
     try {
         const { score1, score2, winner, notes } = req.body;
         const userId = req.user._id.toString();
@@ -66,7 +69,8 @@ router.post('/:id/result', auth, upload.single('screenshot'), async (req, res) =
             winner: winner,
             notes: notes || '',
             submittedAt: new Date(),
-            screenshotPath: req.file ? req.file.path : null,
+            screenshotPath: req.files?.['screenshot'] ? req.files['screenshot'][0].path : null,
+            historyScreenshotPath: req.files?.['historyScreenshot'] ? req.files['historyScreenshot'][0].path : null,
             submittedBy: req.user._id
         };
 

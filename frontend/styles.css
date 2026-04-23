@@ -595,6 +595,11 @@ body {
         max-width: 100%;
     }
 
+    /* Force cards to fill their grid tracks, overriding later clamp rules */
+    .player-cards-grid .player-card {
+        width: 100%;
+    }
+
     .player-card:nth-child(1) {
         grid-area: card1;
     }
@@ -606,7 +611,9 @@ body {
     .player-card:nth-child(3) {
         grid-area: card3;
         justify-self: center;
-        max-width: 50%;
+        /* Perfectly match the width of a single 1fr column from the row above */
+        /* (50% width minus half of the 8px gap) */
+        width: calc(50% - 4px);
     }
 
     .player-card img {

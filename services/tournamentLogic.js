@@ -352,6 +352,7 @@ class RoundRobinLogic extends TournamentLogic {
         }).sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+            if (b.wins !== a.wins) return b.wins - a.wins; // Enhanced tie-breaker
             return b.goalsFor - a.goalsFor;
         });
 
@@ -704,6 +705,39 @@ class DoubleEliminationLogic extends TournamentLogic {
         const nextMatch = await winnersLogic.advanceWinner(match);
         if (nextMatch) return nextMatch;
 
+        // Fallback: If nextMatch pointer is null, calculate it dynamically
+        const nextRound = match.round + 1;
+        // In winners bracket, match numbering is sequential. 
+        // We find the relative index of the current match in its round.
+        const currentRoundMatches = winnersMatches
+            .filter(m => m.round === match.round)
+            .sort((a, b) => a.matchNumber - b.matchNumber);
+            
+        const matchIdx = currentRoundMatches.findIndex(m => m._id.toString() === match._id.toString());
+        
+        if (matchIdx !== -1) {
+            const nextMatchIdx = Math.floor(matchIdx / 2);
+            const nextRoundMatches = winnersMatches
+                .filter(m => m.round === nextRound)
+                .sort((a, b) => a.matchNumber - b.matchNumber);
+
+            if (nextRoundMatches[nextMatchIdx]) {
+                const targetMatch = nextRoundMatches[nextMatchIdx];
+                const isPlayer1Slot = matchIdx % 2 === 0;
+                
+                const updateData = isPlayer1Slot ? { player1: match.winner } : { player2: match.winner };
+                
+                // Check if match should be scheduled
+                const currentTarget = await Match.findById(targetMatch._id);
+                const willHaveP1 = isPlayer1Slot ? match.winner : currentTarget.player1;
+                const willHaveP2 = isPlayer1Slot ? currentTarget.player2 : match.winner;
+                
+                if (willHaveP1 && willHaveP2) updateData.status = 'scheduled';
+                
+                return await Match.findByIdAndUpdate(targetMatch._id, { $set: updateData }, { new: true });
+            }
+        }
+
         const grandFinals = this.tournament.matches.find(m => m.bracket === 'grand_finals');
         if (grandFinals && !grandFinals.player1) {
             await Match.findByIdAndUpdate(grandFinals._id, {
@@ -787,7 +821,6 @@ class DoubleEliminationLogic extends TournamentLogic {
                     status: 'scheduled'
                 }
             });
-            return resetMatch;
         }
 
         return null;
