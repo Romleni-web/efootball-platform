@@ -2,35 +2,35 @@ const UI = {
     TOURNAMENT_FORMATS: {
         single_elimination: {
             name: 'Single Elimination',
-            icon: '',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
             description: 'Lose once and you\'re out. Fast and simple.',
             recommended: '8-64 players',
             settings: ['bestOf', 'bronzeMatch', 'maxPlayers']
         },
         double_elimination: {
             name: 'Double Elimination',
-            icon: '',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
             description: 'Two losses to eliminate. Fairer but longer.',
             recommended: '8-32 players',
             settings: ['bestOf', 'maxPlayers']
         },
         round_robin: {
             name: 'Round Robin',
-            icon: '',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/><path d="m19.07 4.93-14.14 14.14"/></svg>',
             description: 'Everyone plays everyone. Best for small groups.',
             recommended: '4-12 players',
             settings: ['rounds', 'pointsWin', 'pointsDraw', 'maxPlayers']
         },
         swiss: {
             name: 'Swiss System',
-            icon: '',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
             description: 'Play similar-skilled opponents. Chess/Esports standard.',
             recommended: '8-128 players',
             settings: ['swissRounds', 'pointsWin', 'pointsDraw', 'maxPlayers']
         },
         league: {
             name: 'League',
-            icon: '',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
             description: 'Season-long competition with home/away fixtures.',
             recommended: '4-20 players',
             settings: ['rounds', 'pointsWin', 'pointsDraw', 'maxPlayers']
@@ -55,7 +55,11 @@ const UI = {
         clock: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
         search: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
         scale: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>',
-        gamepad: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>'
+        gamepad: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>',
+        sun: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+        moon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+        arrowRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+        menu: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>'
     },
 
     showToast(message, type = 'info') {
@@ -65,16 +69,23 @@ const UI = {
         toast.textContent = message;
         container.appendChild(toast);
 
-        setTimeout(() => toast.classList.add('show'), 10);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+        });
+
         setTimeout(() => {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(() => toast.remove(), 400);
         }, 3000);
     },
 
     showModal(content) {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay active';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
         overlay.innerHTML = `
             <div class="modal">
                 ${content}
@@ -82,11 +93,27 @@ const UI = {
         `;
         document.body.appendChild(overlay);
 
+        // Focus trap
+        const modal = overlay.querySelector('.modal');
+        const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusableElements.length) {
+            focusableElements[0].focus();
+        }
+
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 overlay.remove();
             }
         });
+
+        // Escape to close
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
 
         return overlay;
     },
@@ -144,10 +171,11 @@ const UI = {
                         <h3 class="tournament-title">${tournament.name || 'Unnamed Tournament'}</h3>
                         <div class="tournament-subheader">
                             <span class="format-badge">
+                                ${formatInfo.icon}
                                 <span>${formatInfo.name}</span>
                             </span>
-                            <div class="prize-pool">${this.icons.trophy} ${this.formatCurrency(prizePool)}</div>
                         </div>
+                        <div class="prize-pool">${this.icons.trophy} ${this.formatCurrency(prizePool)}</div>
                     </div>
                     <span class="tournament-status status-${tournament.status || 'unknown'}">${tournament.status || 'unknown'}</span>
                 </div>
@@ -158,7 +186,7 @@ const UI = {
                     <span>${this.icons.calendar} ${this.formatDate(tournament.startDate)}</span>
                 </div>
                 ${tournament.whatsappLink ? `
-                    <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn">
+                    <a href="${tournament.whatsappLink}" target="_blank" rel="noopener noreferrer" class="whatsapp-btn">
                         ${this.icons.phone} Join WhatsApp Group
                     </a>
                 ` : ''}
@@ -200,7 +228,7 @@ const UI = {
             return `<button class="btn btn-secondary" disabled>Registration Closed</button>`;
         }
 
-        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\\\'") || 'Tournament'}', ${tournament.entryFee || 0}, '${tournament.adminPhone || ''}')">Join Tournament</button>`;
+        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}', ${tournament.entryFee || 0}, '${tournament.adminPhone || ''}')">Join Tournament</button>`;
     },
 
     renderAdminButtons(tournament) {
@@ -222,7 +250,7 @@ const UI = {
             const isRoundBased = ['round_robin', 'league', 'swiss'].includes(tournament.format);
             return `
                 <div class="admin-actions">
-                    <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\\\'") || 'Tournament'}')">
+                    <button class="btn btn-primary" onclick="UI.showBracketModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}')">
                         ${this.icons.eye} View ${isRoundBased ? 'Standings' : 'Bracket'}
                     </button>
                 </div>
@@ -251,7 +279,7 @@ const UI = {
         const content = `
             <div class="modal-header">
                 <h3>Join Tournament: ${name}</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <div class="payment-steps">
                 <div class="step">
@@ -319,8 +347,10 @@ const UI = {
     showLoading() {
         const loader = document.createElement('div');
         loader.id = 'globalLoader';
-        loader.innerHTML = '<div class="spinner"></div>';
         loader.className = 'global-loader';
+        loader.innerHTML = '<div class="spinner"></div>';
+        loader.setAttribute('role', 'status');
+        loader.setAttribute('aria-label', 'Loading...');
         document.body.appendChild(loader);
     },
 
@@ -331,7 +361,7 @@ const UI = {
 
     renderBracket(bracketData) {
         if (!bracketData || !bracketData.rounds) {
-            return '<div class="no-bracket">No bracket available</div>';
+            return '<div class="empty-state"><p>No bracket available</p></div>';
         }
 
         let html = '<div class="bracket-container">';
@@ -378,7 +408,7 @@ const UI = {
 
     renderStandings(standingsData) {
         if (!standingsData || standingsData.length === 0) {
-            return '<div class="no-bracket">Standings will appear once matches are played</div>';
+            return '<div class="empty-state"><p>Standings will appear once matches are played</p></div>';
         }
 
         return `
@@ -400,7 +430,7 @@ const UI = {
                     </thead>
                     <tbody>
                         ${standingsData.map((s, i) => `
-                            <tr class="${i < 3 ? 'rank-' + (i + 1) : ''} ${s.player?._id === Auth.getUser()?._id ? 'current-user' : ''}">
+                            <tr class="${i < 3 ? 'rank-' + (i + 1) : ''} ${s.player?._id === Auth.getUser()?._id ? 'highlight-user' : ''}">
                                 <td class="rank-cell">${s.rank}</td>
                                 <td>
                                     <strong>${s.player?.username || 'Unknown'}</strong>
@@ -429,7 +459,7 @@ const UI = {
         const content = `
             <div class="modal-header">
                 <h3>${this.icons.trophy} ${tournamentName}</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <div id="bracketContent" class="bracket-loading">
                 <div class="spinner"></div>
@@ -448,7 +478,7 @@ const UI = {
             })
             .catch(error => {
                 document.getElementById('bracketContent').innerHTML = 
-                    `<div class="error-message">Error loading bracket: ${error.message}</div>`;
+                    `<div class="empty-state"><p>Error loading bracket: ${error.message}</p></div>`;
             });
         
         return modal;
@@ -458,7 +488,7 @@ const UI = {
         const content = `
             <div class="modal-header">
                 <h3>Create New Tournament</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="createTournamentForm" class="modal-form">
                 ${this.createFormGroup('Tournament Name', 'text', 'name', 'eFootball Championship')}
@@ -631,7 +661,7 @@ const UI = {
         const content = `
             <div class="modal-header">
                 <h3>Submit Match Result</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <div class="result-modal-body">
                 <div class="match-players-header">

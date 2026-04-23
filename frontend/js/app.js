@@ -189,7 +189,7 @@ const Pages = {
         }
     },
 
-    async home() {
+        async home() {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = '<div class="spinner"></div>';
 
@@ -239,16 +239,48 @@ const Pages = {
 
         mainContent.innerHTML = `
             <section class="hero">
-                <h1>Compete. Win. Earn.</h1>
+                <h1>Compete. <span>Win.</span> Earn.</h1>
                 <p>Join the ultimate eFootball tournament platform. Compete against the best players in Kenya, win cash prizes, and climb the leaderboard.</p>
                 <div class="cta-buttons">
-                    <button class="btn btn-primary" onclick="Router.navigate('tournaments')">Browse Tournaments</button>
-                    ${!Auth.isAuthenticated() ? `<button class="btn btn-secondary" onclick="Router.navigate('register')">Create Account</button>` : ''}
+                    <button class="btn btn-primary btn-lg" onclick="Router.navigate('tournaments')">
+                        ${UI.icons.arrowRight} Browse Tournaments
+                    </button>
+                    ${!Auth.isAuthenticated() ? `<button class="btn btn-secondary btn-lg" onclick="Router.navigate('register')">Create Account</button>` : ''}
+                </div>
+            </section>
+
+            <!-- Player Cards Showcase - Only on Home -->
+            <section class="player-showcase" aria-label="Featured players">
+                <h2>Featured Players</h2>
+                <div class="player-cards-grid">
+                    <div class="player-card featured">
+                        <img src="messi.png" alt="Lionel Messi" loading="lazy">
+                        <div class="player-card-overlay">
+                            <h3>Lionel Messi</h3>
+                            <p>OVR 98 &bull; CF</p>
+                        </div>
+                    </div>
+                    
+                    <div class="player-card">
+                        <img src="batistuta.png" alt="Gabriel Batistuta" loading="lazy">
+                        <div class="player-card-overlay">
+                            <h3>Gabriel Batistuta</h3>
+                            <p>OVR 95 &bull; ST</p>
+                        </div>
+                    </div>
+                    
+                    <div class="player-card">
+                        <img src="ronaldo.png" alt="Cristiano Ronaldo" loading="lazy">
+                        <div class="player-card-overlay">
+                            <h3>Cristiano Ronaldo</h3>
+                            <p>OVR 97 &bull; ST</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
             <section class="live-tournament-section">
-                <h2 style="text-align: center; margin-bottom: 1.5rem; color: var(--dark); font-weight: 700;">Live Tournament</h2>
+                <h2>Live Tournament</h2>
                 ${liveTournamentHtml}
             </section>
             
@@ -256,28 +288,28 @@ const Pages = {
                 <h2>How It Works</h2>
                 <div class="steps-grid">
                     <div class="step-card">
-                        <div class="step-icon">
+                        <div class="step-icon" data-step="1">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <h3>Register</h3>
                         <p>Create your account and set your eFootball ID</p>
                     </div>
                     <div class="step-card">
-                        <div class="step-icon">
+                        <div class="step-icon" data-step="2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
                         </div>
                         <h3>Pay Entry Fee</h3>
                         <p>Send M-Pesa to admin and upload proof</p>
                     </div>
                     <div class="step-card">
-                        <div class="step-icon">
+                        <div class="step-icon" data-step="3">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>
                         </div>
                         <h3>Play & Win</h3>
                         <p>Compete in matches and submit results</p>
                     </div>
                     <div class="step-card">
-                        <div class="step-icon">
+                        <div class="step-icon" data-step="4">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                         </div>
                         <h3>Collect Prizes</h3>
@@ -297,12 +329,12 @@ const Pages = {
                     ${UI.createFormGroup('Email', 'email', 'email', 'your@email.com')}
                     ${UI.createFormGroup('Password', 'password', 'password', '••••••••')}
                     <p style="text-align: right; margin-top: -0.5rem; margin-bottom: 1rem;">
-                        <a href="#" onclick="Router.navigate('forgot')" style="color: var(--primary); font-size: 0.875rem;">Forgot password?</a>
+                        <a href="#" onclick="Router.navigate('forgot')" style="color: var(--primary); font-size: 0.875rem; font-weight: 500;">Forgot password?</a>
                     </p>
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
                 </form>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
-                    Don't have an account? <a href="#" onclick="Router.navigate('register')" style="color: var(--primary);">Register</a>
+                    Don't have an account? <a href="#" onclick="Router.navigate('register')" style="color: var(--primary); font-weight: 600;">Register</a>
                 </p>
             </div>
         `;
@@ -333,7 +365,7 @@ const Pages = {
         mainContent.innerHTML = `
             <div class="form-container fade-in">
                 <h2>Forgot Password</h2>
-                <p style="color: var(--gray-500); margin-bottom: 1rem; text-align: center;">
+                <p style="color: var(--gray-500); margin-bottom: 1rem; text-align: center; font-size: 0.9375rem;">
                     Enter your account email and we will generate a reset link.
                 </p>
                 <form id="forgotPasswordForm">
@@ -341,7 +373,7 @@ const Pages = {
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Generate Reset Link</button>
                 </form>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
-                    Remembered your password? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
+                    Remembered your password? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary); font-weight: 600;">Login</a>
                 </p>
                 <div id="resetLinkContainer" style="display: none; margin-top: 1rem; padding: 0.875rem; background: var(--gray-100); border-radius: 8px;">
                     <small style="color: var(--gray-500);">Reset link:</small>
@@ -359,7 +391,7 @@ const Pages = {
             try {
                 UI.showLoading();
                 const result = await API.forgotPassword(formData.get('email'));
-                    UI.showToast(result.message || 'If that email exists, a reset link has been sent.', 'success');
+                UI.showToast(result.message || 'If that email exists, a reset link has been sent.', 'success');
             } catch (error) {
                 UI.showToast(error.message, 'error');
             } finally {
@@ -382,7 +414,7 @@ const Pages = {
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Reset Password</button>
                 </form>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
-                    Back to <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
+                    Back to <a href="#" onclick="Router.navigate('login')" style="color: var(--primary); font-weight: 600;">Login</a>
                 </p>
             </div>
         `;
@@ -430,7 +462,7 @@ const Pages = {
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Account</button>
                 </form>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--gray-500);">
-                    Already have an account? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary);">Login</a>
+                    Already have an account? <a href="#" onclick="Router.navigate('login')" style="color: var(--primary); font-weight: 600;">Login</a>
                 </p>
             </div>
         `;
@@ -465,7 +497,7 @@ const Pages = {
         try {
             const tournaments = await API.getTournaments();
             mainContent.innerHTML = `
-                <h2 style="color: var(--dark); margin-bottom: 1rem; font-weight: 700;">Active Tournaments</h2>
+                <h2 style="color: var(--dark); margin-bottom: 1rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em;">Active Tournaments</h2>
                 <div class="card-grid">
                     ${tournaments.length ? tournaments.map(t => UI.renderTournamentCard(t)).join('') : 
                     '<div class="empty-state"><p>No tournaments available</p></div>'}
@@ -493,7 +525,7 @@ const Pages = {
                 <div class="tournament-detail-header">
                     <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
                         <div>
-                            <h1 style="color: var(--dark); font-weight: 700;">${tournament.name}</h1>
+                            <h1 style="color: var(--dark); font-weight: 800; font-family: var(--font-display); letter-spacing: -0.03em;">${tournament.name}</h1>
                             <p style="color: var(--gray-500); margin-top: 0.5rem;">
                                 ${tournament.description || ''}
                                 <span class="format-badge">
@@ -532,8 +564,8 @@ const Pages = {
 
                     ${tournament.whatsappLink ? `
                         <div style="margin-top: 1.5rem;">
-                            <a href="${tournament.whatsappLink}" target="_blank" class="whatsapp-btn">
-                                Join Tournament WhatsApp Group
+                            <a href="${tournament.whatsappLink}" target="_blank" rel="noopener noreferrer" class="whatsapp-btn">
+                                ${UI.icons.phone} Join Tournament WhatsApp Group
                             </a>
                         </div>
                     ` : ''}
@@ -792,14 +824,23 @@ const Pages = {
                 <div class="dashboard">
                     <aside class="sidebar">
                         <ul class="sidebar-menu">
-                            <li><a href="#" class="active" onclick="Router.navigate('dashboard')">Overview</a></li>
-                            <li><a href="#" onclick="Router.navigate('profile')">My Profile</a></li>
-                            <li><a href="#" onclick="Router.navigate('tournaments')">Browse Tournaments</a></li>
+                            <li><a href="#" class="active" onclick="Router.navigate('dashboard')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                Overview
+                            </a></li>
+                            <li><a href="#" onclick="Router.navigate('profile')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                My Profile
+                            </a></li>
+                            <li><a href="#" onclick="Router.navigate('tournaments')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                                Browse Tournaments
+                            </a></li>
                         </ul>
                     </aside>
 
                     <div class="dashboard-content">
-                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 700;">Dashboard</h2>
+                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em;">Dashboard</h2>
                         
                         <div class="stats-grid">
                             <div class="stat-card">
@@ -820,25 +861,25 @@ const Pages = {
                             </div>
                         </div>
 
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">My Tournaments</h3>
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">My Tournaments</h3>
                         ${tournaments?.length ? `
                             <div class="card-grid">
                                 ${tournaments.map(t => UI.renderTournamentCard(t)).join('')}
                             </div>
                         ` : '<p style="color: var(--gray-500);">You haven\'t joined any tournaments yet.</p>'}
 
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">Upcoming Matches</h3>
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">Upcoming Matches</h3>
                         ${safeUpcoming.length ? safeUpcoming.map(m => `
                             <div class="tournament-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
-                                        <h4>vs ${m.opponent?.username || 'Unknown'}</h4>
-                                        <p style="color: var(--gray-500);">${m.tournament?.name || 'Unknown Tournament'}</p>
+                                        <h4 style="font-weight: 700;">vs ${m.opponent?.username || 'Unknown'}</h4>
+                                        <p style="color: var(--gray-500); font-size: 0.875rem;">${m.tournament?.name || 'Unknown Tournament'}</p>
                                     </div>
-                                   <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
+                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
                                 </div>
                                 <div class="efootball-id-box">
-                                    <p style="margin-bottom: 0.5rem;"><strong>Opponent eFootball ID:</strong></p>
+                                    <p style="margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem;"><strong>Opponent eFootball ID:</strong></p>
                                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                                         <code>${m.opponent?.efootballId || 'N/A'}</code>
                                         <button class="copy-btn" onclick="navigator.clipboard.writeText('${m.opponent?.efootballId || ''}')">Copy</button>
@@ -862,7 +903,7 @@ const Pages = {
         try {
             const players = await API.getLeaderboard();
             mainContent.innerHTML = `
-                <h2 style="color: var(--dark); margin-bottom: 2rem; font-weight: 700;">Global Leaderboard</h2>
+                <h2 style="color: var(--dark); margin-bottom: 2rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em;">Global Leaderboard</h2>
                 <div class="leaderboard-table responsive-leaderboard">
                     <table>
                         <thead>
@@ -923,14 +964,23 @@ const Pages = {
                 <div class="dashboard">
                     <aside class="sidebar">
                         <ul class="sidebar-menu">
-                            <li><a href="#" class="active">Dashboard</a></li>
-                            <li><a href="#" onclick="Pages.showCreateTournamentModal()">Create Tournament</a></li>
-                            <li><a href="#" onclick="Router.navigate('tournaments')">All Tournaments</a></li>
+                            <li><a href="#" class="active">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                Dashboard
+                            </a></li>
+                            <li><a href="#" onclick="Pages.showCreateTournamentModal()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                Create Tournament
+                            </a></li>
+                            <li><a href="#" onclick="Router.navigate('tournaments')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                                All Tournaments
+                            </a></li>
                         </ul>
                     </aside>
 
                     <div class="dashboard-content">
-                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 700;">
+                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em;">
                             Admin Panel <span class="admin-badge">Admin</span>
                         </h2>
 
@@ -953,7 +1003,7 @@ const Pages = {
                             </div>
                         </div>
 
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">
                             Payment Verifications (${pendingPayments?.length || 0})
                         </h3>
                         ${pendingPayments?.length ? `
@@ -961,7 +1011,7 @@ const Pages = {
                                 ${pendingPayments.map(p => `
                                     <div class="payment-item">
                                         <div class="payment-info">
-                                            <img src="${p.screenshotPath}" alt="Proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')">
+                                            <img src="${p.screenshotPath}" alt="Payment proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')" loading="lazy">
                                             <div>
                                                 <strong>${p.user?.username || 'Unknown'}</strong>
                                                 <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0;">
@@ -971,15 +1021,15 @@ const Pages = {
                                             </div>
                                         </div>
                                         <div class="payment-actions">
-                                            <button class="btn btn-success" onclick="Pages.verifyPayment('${p._id}', 'approve')">Approve</button>
-                                            <button class="btn btn-danger" onclick="Pages.verifyPayment('${p._id}', 'reject')">Reject</button>
+                                            <button class="btn btn-success btn-sm" onclick="Pages.verifyPayment('${p._id}', 'approve')">Approve</button>
+                                            <button class="btn btn-danger btn-sm" onclick="Pages.verifyPayment('${p._id}', 'reject')">Reject</button>
                                         </div>
                                     </div>
                                 `).join('')}
                             </div>
                         ` : '<p style="color: var(--gray-500);">No pending payments.</p>'}
 
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 600;">
+                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">
                             Match Verifications (${pendingResults?.length || 0})
                         </h3>
                         ${pendingResults?.length ? `
@@ -1024,16 +1074,16 @@ const Pages = {
                                             <div class="dispute-actions">
                                                 <p class="dispute-warning">Results do not match!</p>
                                                 <div class="action-buttons">
-                                                    <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
+                                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
                                                         ${r.player1?.user?.username} Correct
                                                     </button>
-                                                    <button class="btn btn-success" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
+                                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
                                                         ${r.player2?.user?.username} Correct
                                                     </button>
-                                                    <button class="btn btn-warning" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
+                                                    <button class="btn btn-warning btn-sm" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
                                                         Custom
                                                     </button>
-                                                    <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                                    <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
                                                         Debug
                                                     </button>
                                                 </div>
@@ -1043,7 +1093,7 @@ const Pages = {
                                                 ${r.disputeReason || ''}
                                             </p>
                                             <div style="margin-top: 0.75rem;">
-                                                <button class="btn btn-secondary" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                                <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
                                                     Debug
                                                 </button>
                                             </div>
@@ -1064,7 +1114,7 @@ const Pages = {
         const content = `
             <div class="modal-header">
                 <h3>Create New Tournament</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="createTournamentForm" style="padding: 1.5rem;">
                 ${UI.createFormGroup('Tournament Name', 'text', 'name', 'eFootball Championship')}
@@ -1170,7 +1220,7 @@ const Pages = {
             `,
             double_elimination: `
                 <div class="form-group">
-                    <label>Games per Match</label>
+                    <label>Games  per Match</label>
                     <select id="bestOf">
                         <option value="1">1 game (Bo1)</option>
                         <option value="3">3 games (Bo3)</option>
@@ -1251,7 +1301,7 @@ const Pages = {
         const content = `
             <div class="modal-header">
                 <h3>Custom Match Resolution</h3>
-                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="resolveForm" style="padding: 1.5rem;">
                 <div class="score-inputs">
@@ -1322,7 +1372,7 @@ const Pages = {
             const content = `
                 <div class="modal-header">
                     <h3>Advancement Debug</h3>
-                    <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+                    <button class="close-btn" onclick="UI.closeModal()" aria-label="Close modal">&times;</button>
                 </div>
                 <div style="padding: 1rem 1.5rem 1.5rem;">
                     <p style="color: var(--gray-500); margin-bottom: 1rem;">
@@ -1414,9 +1464,12 @@ window.Router = Router;
 window.Pages = Pages;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-        document.getElementById('navLinks').classList.toggle('active');
-    });
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            document.getElementById('navLinks').classList.toggle('active');
+        });
+    }
 
     await Auth.init();
     wireLegacyInlineHandlers(document);
