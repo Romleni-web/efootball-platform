@@ -2849,7 +2849,7 @@ body {
     }
 
     .responsive-leaderboard {
-        overflow-x: auto;
+        overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
         border-radius: var(--radius-lg);
         border: 1px solid var(--border);
@@ -2857,14 +2857,22 @@ body {
 
     .responsive-leaderboard table {
         width: 100%;
-        min-width: 600px;
+        min-width: auto;
     }
 
-    .responsive-leaderboard th,
-    .responsive-leaderboard td {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.8125rem;
-        white-space: nowrap;
+    .hide-tablet {
+        display: none !important;
+    }
+
+    @media (max-width: 480px) {
+        .hide-mobile {
+            display: none !important;
+        }
+        .leaderboard-table th, 
+        .leaderboard-table td {
+            padding: var(--space-2) var(--space-2);
+            font-size: 0.75rem;
+        }
     }
 
     .player-cards-grid {

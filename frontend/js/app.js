@@ -933,12 +933,12 @@ const Pages = {
                             <tr>
                                 <th>Rank</th>
                                 <th>Player</th>
-                                <th>Played</th>
+                                <th class="hide-mobile">Played</th>
                                 <th>W</th>
                                 <th>L</th>
-                                <th>Win%</th>
-                                <th>GF</th>
-                                <th>GA</th>
+                                <th class="hide-tablet">Win%</th>
+                                <th class="hide-tablet">GF</th>
+                                <th class="hide-tablet">GA</th>
                                 <th>Points</th>
                             </tr>
                         </thead>
@@ -952,12 +952,12 @@ const Pages = {
                                         ${p.efootballId ? `<br><small class="efootball-id">ID: ${p.efootballId}</small>` : ''}
                                         ${p._id === Auth.getUser()?._id ? '<span class="you-badge">(You)</span>' : ''}
                                     </td>
-                                    <td>${p.played}</td>
+                                    <td class="hide-mobile">${p.played}</td>
                                     <td class="text-success">${p.wins}</td>
                                     <td class="text-danger">${p.losses}</td>
-                                    <td>${p.winRate}%</td>
-                                    <td>${p.goalsFor}</td>
-                                    <td>${p.goalsAgainst}</td>
+                                    <td class="hide-tablet">${p.winRate}%</td>
+                                    <td class="hide-tablet">${p.goalsFor}</td>
+                                    <td class="hide-tablet">${p.goalsAgainst}</td>
                                     <td class="points">${p.points}</td>
                                 </tr>
                             `).join('')}
