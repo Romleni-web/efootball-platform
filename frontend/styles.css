@@ -474,6 +474,7 @@ body {
     background: linear-gradient(180deg, transparent 50%, rgba(15, 23, 42, 0.9) 100%);
     z-index: 1;
     opacity: 1;
+    pointer-events: none; /* Prevent blocking hover events */
 }
 
 .player-card:hover {
@@ -696,6 +697,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
+    pointer-events: none; /* Prevent blocking hover events */
     background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
@@ -804,6 +806,7 @@ body {
     left: 0;
     right: 0;
     height: 2px;
+    pointer-events: none; /* Prevent blocking hover events */
     background: linear-gradient(90deg, var(--primary), var(--accent));
     opacity: 0;
     transition: opacity var(--transition-base);
@@ -1014,6 +1017,7 @@ body {
     left: 0;
     width: 4px;
     height: 100%;
+    pointer-events: none; /* Prevent blocking hover events */
     background: linear-gradient(180deg, var(--primary), var(--accent));
     opacity: 0;
     transition: opacity var(--transition-base);
@@ -1170,6 +1174,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
+    pointer-events: none; /* Prevent blocking hover events */
     background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
@@ -1564,6 +1569,7 @@ body {
     top: 0;
     left: 0;
     width: 100%;
+    pointer-events: none; /* Prevent blocking hover events */
     height: 3px;
     background: linear-gradient(90deg, var(--primary), var(--accent));
     opacity: 0;
@@ -2269,6 +2275,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
+    pointer-events: none; /* Prevent blocking hover events */
     background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
