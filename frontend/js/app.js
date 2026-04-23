@@ -161,34 +161,11 @@ function wireLegacyInlineHandlers(root = document) {
 }
 
 const ChatUI = {
-    render(roomId, title = 'Global Chat') {
+    render(roomId, title = 'Community Chat') {
         API.joinChat(roomId);
         const containerId = `chat-${roomId}`;
-        
-        setTimeout(() => {
-            const form = document.getElementById(`form-${roomId}`);
-            const input = document.getElementById(`input-${roomId}`);
-            const messages = document.getElementById(`messages-${roomId}`);
-
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (input.value.trim()) {
-                    API.sendMessage(roomId, input.value);
-                    input.value = '';
-                }
-            });
-
-            API.socket.on('new-message', (data) => {
-                const msgDiv = document.createElement('div');
-                msgDiv.className = 'chat-msg';
-                msgDiv.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
-                messages.appendChild(msgDiv);
-                messages.scrollTop = messages.scrollHeight;
-            });
-        }, 100);
-
         return `
-            <div class="chat-container" id="${containerId}">
+            <div class="chat-container" id="${containerId}" data-room="${roomId}">
                 <div class="chat-header">${title}</div>
                 <div class="chat-messages" id="messages-${roomId}"></div>
                 <form class="chat-input-area" id="form-${roomId}">
@@ -197,6 +174,32 @@ const ChatUI = {
                 </form>
             </div>
         `;
+    },
+
+    attachListeners(roomId) {
+        const form = document.getElementById(`form-${roomId}`);
+        const input = document.getElementById(`input-${roomId}`);
+        const messages = document.getElementById(`messages-${roomId}`);
+
+        if (!form || !input || !messages) return;
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value.trim()) {
+                API.sendMessage(roomId, input.value);
+                input.value = '';
+            }
+        });
+
+        if (API.socket) {
+            API.socket.on('new-message', (data) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-msg';
+                msgDiv.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+                messages.appendChild(msgDiv);
+                messages.scrollTop = messages.scrollHeight;
+            });
+        }
     }
 };
 
@@ -289,6 +292,11 @@ const Pages = {
                 </div>
             </section>
 
+            <section class="global-chat-section">
+                <h2>Community Chat</h2>
+                ${ChatUI.render('global')}
+            </section>
+
             <!-- Player Cards Showcase - Only on Home -->
             <section class="player-showcase" aria-label="Featured players">
                 <h2>Featured Players</h2>
@@ -358,6 +366,9 @@ const Pages = {
                 </div>
             </section>
         `;
+
+        // Initialize chat after content is in DOM
+        ChatUI.attachListeners('global');
     },
 
     login() {
@@ -643,6 +654,12 @@ const Pages = {
                     ${await this.renderBracket(id)}
                 </div>` : ''}
             `;
+
+            // Initialize any match lobby chats found in the matches list
+            document.querySelectorAll('.chat-container').forEach(chat => {
+                const roomId = chat.dataset.room;
+                if (roomId && roomId !== 'global') ChatUI.attachListeners(roomId);
+            });
         } catch (error) {
             mainContent.innerHTML = `<div class="empty-state"><p>Tournament not found</p></div>`;
         }
