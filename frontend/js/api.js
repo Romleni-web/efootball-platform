@@ -154,45 +154,70 @@ const API = {
         return this.handleResponse(response);
     },
 
-       // ============================================
+    // ============================================
     // CHAT UTILITIES - WHATSAPP STYLE
     // ============================================
 
     socket: null,
+    socketReady: false,
+    
     initSocket() {
         if (this.socket || typeof io === 'undefined') return;
+        
         this.socket = io(SOCKET_URL);
         
-        // Initialize Chat module when socket is ready
         this.socket.on('connect', () => {
             console.log('Socket connected');
-            if (window.Chat && !Chat.socket) {
+            this.socketReady = true;
+            // Initialize Chat module when socket connects
+            if (window.Chat && !Chat.initialized) {
                 Chat.init();
             }
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            this.socketReady = false;
+        });
+        
+        this.socket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err.message);
         });
     },
 
     joinChat(roomId) {
         this.initSocket();
-        if (this.socket && window.Chat) {
+        
+        // If Chat module is available, use it
+        if (window.Chat) {
+            // Ensure Chat is initialized before joining
+            if (!Chat.initialized) {
+                Chat.init();
+            }
             Chat.joinRoom(roomId);
+            return;
+        }
+        
+        // Legacy fallback
+        if (this.socket) {
+            if (roomId === 'global') this.socket.emit('join-global');
+            else this.socket.emit('join-match', roomId);
         }
     },
 
     sendMessage(roomId, message) {
-        // Legacy fallback - Chat module handles this now
         const user = Auth.getUser();
         if (!user || !this.socket) return;
         
+        // Use Chat module if available
+        if (window.Chat && Chat.initialized) {
+            // Chat handles its own sending
+            return;
+        }
+        
+        // Legacy fallback
         this.socket.emit('send-message', {
-            roomId,
-            content: message,
-            user: {
-                username: user.username,
-                userId: user._id,
-                avatar: user.avatar || ''
-            },
-            type: roomId === 'global' ? 'global' : 'match'
+            roomId, message, username: user.username, type: roomId === 'global' ? 'global' : 'match'
         });
     },
 

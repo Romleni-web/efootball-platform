@@ -17,20 +17,38 @@ const Chat = {
         arrowDown: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>'
     },
 
-    // Available reactions (emojis only here)
     reactions: ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '👏'],
 
-    // State
-    rooms: new Map(), // roomId -> room data
+    rooms: new Map(),
     currentRoom: null,
     currentUser: null,
     socket: null,
     replyTo: null,
+    initialized: false,
 
     init() {
+        if (this.initialized) return;
+        this.initialized = true;
+        
         this.currentUser = Auth.getUser();
+        
+        // Ensure socket is initialized via API
+        if (!API.socket) {
+            API.initSocket();
+        }
         this.socket = API.socket;
-        this.setupSocketListeners();
+        
+        if (this.socket) {
+            this.setupSocketListeners();
+        } else {
+            // Retry after a short delay if socket not ready
+            setTimeout(() => {
+                if (API.socket && !this.socket) {
+                    this.socket = API.socket;
+                    this.setupSocketListeners();
+                }
+            }, 500);
+        }
     },
 
     setupSocketListeners() {
@@ -74,17 +92,33 @@ const Chat = {
         });
     },
 
-    // Join a chat room
-    joinRoom(roomId, title = 'Chat') {
+    ensureSocket() {
         if (!this.socket) {
             API.initSocket();
             this.socket = API.socket;
-            this.setupSocketListeners();
+            if (this.socket && !this.initialized) {
+                this.setupSocketListeners();
+                this.initialized = true;
+            }
+        }
+        return this.socket;
+    },
+
+    joinRoom(roomId, title) {
+        // Ensure Chat is initialized first
+        if (!this.initialized) {
+            this.init();
+        }
+        
+        // Ensure socket is ready
+        if (!this.ensureSocket()) {
+            console.warn('Socket not available, retrying joinRoom...');
+            setTimeout(() => this.joinRoom(roomId, title), 300);
+            return;
         }
 
         this.currentRoom = roomId;
         
-        // Initialize room state
         if (!this.rooms.has(roomId)) {
             this.rooms.set(roomId, {
                 messages: [],
@@ -106,17 +140,14 @@ const Chat = {
             }
         });
 
-        // Mark messages as read when joining
         setTimeout(() => this.markAllRead(roomId), 500);
     },
 
-    // Render chat UI
-    render(roomId, title = 'Community Chat') {
+    render(roomId, title) {
         const containerId = `chat-${roomId}`;
         
         return `
             <div class="wa-chat-container" id="${containerId}" data-room="${roomId}">
-                <!-- Chat Header -->
                 <div class="wa-chat-header">
                     <div class="wa-chat-header-info">
                         <div class="wa-chat-avatar">
@@ -140,7 +171,6 @@ const Chat = {
                     </div>
                 </div>
 
-                <!-- Users List Panel (hidden by default) -->
                 <div class="wa-users-panel" id="users-panel-${roomId}" style="display:none;">
                     <div class="wa-users-header">
                         <span>Online Users</span>
@@ -149,7 +179,6 @@ const Chat = {
                     <div class="wa-users-list" id="users-list-${roomId}"></div>
                 </div>
 
-                <!-- Messages Area -->
                 <div class="wa-messages" id="messages-${roomId}">
                     <div class="wa-loading-messages" id="loading-${roomId}">
                         <div class="wa-spinner-small"></div>
@@ -157,12 +186,10 @@ const Chat = {
                     </div>
                 </div>
 
-                <!-- Scroll to bottom button -->
                 <button class="wa-scroll-bottom" id="scroll-btn-${roomId}" onclick="Chat.scrollToBottom('${roomId}')" style="display:none;">
                     ${this.icons.arrowDown}
                 </button>
 
-                <!-- Typing Indicator -->
                 <div class="wa-typing-indicator" id="typing-${roomId}" style="display:none;">
                     <div class="wa-typing-bubbles">
                         <span></span><span></span><span></span>
@@ -170,7 +197,6 @@ const Chat = {
                     <span class="wa-typing-text">someone is typing</span>
                 </div>
 
-                <!-- Reply Preview -->
                 <div class="wa-reply-preview" id="reply-preview-${roomId}" style="display:none;">
                     <div class="wa-reply-content">
                         <div class="wa-reply-username" id="reply-username-${roomId}"></div>
@@ -179,13 +205,11 @@ const Chat = {
                     <button class="wa-reply-close" onclick="Chat.cancelReply('${roomId}')">${this.icons.close}</button>
                 </div>
 
-                <!-- Input Area -->
                 <div class="wa-input-area">
                     <button class="wa-input-btn" onclick="Chat.toggleEmojiPicker('${roomId}')" title="Emoji">
                         ${this.icons.smile}
                     </button>
                     
-                    <!-- Emoji Picker -->
                     <div class="wa-emoji-picker" id="emoji-picker-${roomId}" style="display:none;">
                         ${this.reactions.map(emoji => `
                             <button class="wa-emoji-btn" onclick="Chat.insertEmoji('${roomId}', '${emoji}')">${emoji}</button>
@@ -212,14 +236,12 @@ const Chat = {
         `;
     },
 
-    // Attach event listeners after DOM insertion
     attachListeners(roomId) {
         const input = document.getElementById(`input-${roomId}`);
         const messagesContainer = document.getElementById(`messages-${roomId}`);
         
         if (!input || !messagesContainer) return;
 
-        // Scroll listener for scroll-to-bottom button
         messagesContainer.addEventListener('scroll', () => {
             const room = this.rooms.get(roomId);
             if (!room) return;
@@ -233,7 +255,6 @@ const Chat = {
             }
         });
 
-        // Close emoji picker when clicking outside
         document.addEventListener('click', (e) => {
             const picker = document.getElementById(`emoji-picker-${roomId}`);
             const btn = e.target.closest('.wa-input-btn');
@@ -242,11 +263,9 @@ const Chat = {
             }
         });
 
-        // Focus input
         setTimeout(() => input.focus(), 100);
     },
 
-    // Handle new incoming message
     handleNewMessage(data) {
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
@@ -260,13 +279,11 @@ const Chat = {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // Mark as read if we're viewing this room
         if (this.currentRoom === roomId && room.isAtBottom) {
             this.markAsRead([data._id], roomId);
         }
     },
 
-    // Handle message history from DB
     handleMessageHistory(data) {
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
@@ -278,15 +295,12 @@ const Chat = {
         const loadingEl = document.getElementById(`loading-${roomId}`);
         if (loadingEl) loadingEl.remove();
 
-        // Render all messages
         data.messages.forEach(msg => this.renderMessage(msg, roomId, true));
 
-        // Scroll to bottom
         if (container) {
             container.scrollTop = container.scrollHeight;
         }
 
-        // Mark all as read
         const unreadIds = data.messages
             .filter(m => !m.readBy?.some(r => r.userId === this.currentUser?._id))
             .map(m => m._id);
@@ -296,15 +310,13 @@ const Chat = {
         }
     },
 
-    // Render a single message bubble
-    renderMessage(data, roomId, isHistory = false) {
+    renderMessage(data, roomId, isHistory) {
         const container = document.getElementById(`messages-${roomId}`);
         if (!container) return;
 
         const isMe = data.sender?.userId === this.currentUser?._id;
         const messageId = `msg-${data._id}`;
         
-        // Skip if already rendered
         if (document.getElementById(messageId)) return;
 
         const time = this.formatTime(data.createdAt);
@@ -332,7 +344,6 @@ const Chat = {
                     </button>
                 </div>
                 
-                <!-- Message Menu -->
                 <div class="wa-msg-menu" id="menu-${data._id}" style="display:none;">
                     <button onclick="Chat.setReply('${data._id}', '${roomId}')">
                         ${this.icons.reply} Reply
@@ -351,7 +362,6 @@ const Chat = {
         }
     },
 
-    // Render reply preview inside message
     renderReplyPreview(replyTo) {
         if (!replyTo) return '';
         return `
@@ -362,7 +372,6 @@ const Chat = {
         `;
     },
 
-    // Render reactions
     renderReactions(reactions, messageId, roomId) {
         if (!reactions || reactions.length === 0) return '';
         
@@ -385,13 +394,17 @@ const Chat = {
         `;
     },
 
-    // Send a message
     sendMessage(roomId) {
         const input = document.getElementById(`input-${roomId}`);
         if (!input) return;
 
         const content = input.value.trim();
         if (!content) return;
+
+        if (!this.ensureSocket()) {
+            console.error('Cannot send message: socket not connected');
+            return;
+        }
 
         const user = this.currentUser || { username: 'Guest', _id: null, avatar: '' };
 
@@ -415,7 +428,6 @@ const Chat = {
         });
     },
 
-    // Handle input keydown
     handleInputKeydown(event, roomId) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
@@ -423,13 +435,12 @@ const Chat = {
         }
     },
 
-    // Handle input typing
     handleInput(roomId) {
         const input = document.getElementById(`input-${roomId}`);
         if (!input) return;
 
         const user = this.currentUser;
-        if (!user) return;
+        if (!user || !this.ensureSocket()) return;
 
         this.socket.emit('typing', {
             roomId,
@@ -438,7 +449,6 @@ const Chat = {
         });
     },
 
-    // Handle typing indicator
     handleTyping(data) {
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
@@ -463,7 +473,6 @@ const Chat = {
         }
     },
 
-    // Set reply
     setReply(messageId, roomId) {
         const room = this.rooms.get(roomId);
         if (!room) return;
@@ -491,20 +500,20 @@ const Chat = {
         document.getElementById(`input-${roomId}`)?.focus();
     },
 
-    // Cancel reply
     cancelReply(roomId) {
         this.replyTo = null;
         const preview = document.getElementById(`reply-preview-${roomId}`);
         if (preview) preview.style.display = 'none';
     },
 
-    // Toggle reaction
     toggleReaction(messageId, emoji, roomId) {
         const room = this.rooms.get(roomId);
         if (!room) return;
 
         const message = room.messages.find(m => m._id === messageId);
         if (!message) return;
+
+        if (!this.ensureSocket()) return;
 
         const hasReacted = message.reactions?.some(r => 
             r.userId === this.currentUser?._id && r.emoji === emoji
@@ -527,7 +536,6 @@ const Chat = {
         }
     },
 
-    // Handle reaction update
     handleReactionUpdate(data) {
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
@@ -538,7 +546,6 @@ const Chat = {
             message.reactions = data.reactions;
         }
 
-        // Re-render reactions for this message
         const msgEl = document.getElementById(`msg-${data.messageId}`);
         if (!msgEl) return;
 
@@ -554,9 +561,8 @@ const Chat = {
         }
     },
 
-    // Mark messages as read
     markAsRead(messageIds, roomId) {
-        if (!this.currentUser) return;
+        if (!this.currentUser || !this.ensureSocket()) return;
         
         this.socket.emit('mark-read', {
             roomId,
@@ -566,7 +572,6 @@ const Chat = {
         });
     },
 
-    // Mark all messages in room as read
     markAllRead(roomId) {
         const room = this.rooms.get(roomId);
         if (!room) return;
@@ -580,7 +585,6 @@ const Chat = {
         }
     },
 
-    // Handle read receipts
     handleReadReceipts(data) {
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
@@ -595,7 +599,6 @@ const Chat = {
                 }
             }
 
-            // Update UI for my messages
             const msgEl = document.getElementById(`msg-${msgId}`);
             if (msgEl && msgEl.classList.contains('wa-message-me')) {
                 const statusEl = msgEl.querySelector('.wa-message-status');
@@ -607,9 +610,10 @@ const Chat = {
         });
     },
 
-    // Delete message
     deleteMessage(messageId, roomId) {
         if (!confirm('Delete this message?')) return;
+        
+        if (!this.ensureSocket()) return;
         
         this.socket.emit('delete-message', {
             messageId,
@@ -619,7 +623,6 @@ const Chat = {
         this.hideMessageMenu(messageId);
     },
 
-    // Handle message deleted
     handleMessageDeleted(data) {
         const msgEl = document.getElementById(`msg-${data.messageId}`);
         if (msgEl) {
@@ -632,11 +635,9 @@ const Chat = {
         }
     },
 
-    // Show message menu
     showMessageMenu(event, messageId, roomId) {
         event.stopPropagation();
         
-        // Hide all other menus
         document.querySelectorAll('.wa-msg-menu').forEach(m => m.style.display = 'none');
         
         const menu = document.getElementById(`menu-${messageId}`);
@@ -644,7 +645,6 @@ const Chat = {
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Close menu on click outside
         const closeMenu = (e) => {
             if (!e.target.closest('.wa-msg-menu') && !e.target.closest('.wa-msg-action')) {
                 this.hideMessageMenu(messageId);
@@ -659,7 +659,6 @@ const Chat = {
         if (menu) menu.style.display = 'none';
     },
 
-    // Toggle emoji picker
     toggleEmojiPicker(roomId) {
         const picker = document.getElementById(`emoji-picker-${roomId}`);
         if (picker) {
@@ -667,7 +666,6 @@ const Chat = {
         }
     },
 
-    // Insert emoji into input
     insertEmoji(roomId, emoji) {
         const input = document.getElementById(`input-${roomId}`);
         if (input) {
@@ -677,7 +675,6 @@ const Chat = {
         this.toggleEmojiPicker(roomId);
     },
 
-    // Toggle users list
     toggleUsersList(roomId) {
         const panel = document.getElementById(`users-panel-${roomId}`);
         if (panel) {
@@ -685,13 +682,10 @@ const Chat = {
         }
     },
 
-    // Toggle chat menu
     toggleChatMenu(roomId) {
-        // Placeholder for future menu options
         console.log('Chat menu toggled for', roomId);
     },
 
-    // Update online count
     updateOnlineCount(roomId, count) {
         const statusEl = document.getElementById(`status-${roomId}`);
         if (statusEl) {
@@ -700,7 +694,6 @@ const Chat = {
         }
     },
 
-    // Update online users list
     updateOnlineUsers(roomId, users) {
         const listEl = document.getElementById(`users-list-${roomId}`);
         if (!listEl) return;
@@ -714,7 +707,6 @@ const Chat = {
         `).join('');
     },
 
-    // Show system message
     showSystemMessage(roomId, text) {
         const container = document.getElementById(`messages-${roomId}`);
         if (!container) return;
@@ -726,7 +718,6 @@ const Chat = {
         container.scrollTop = container.scrollHeight;
     },
 
-    // Scroll to bottom
     scrollToBottom(roomId) {
         const container = document.getElementById(`messages-${roomId}`);
         if (container) {
@@ -736,13 +727,11 @@ const Chat = {
         }
     },
 
-    // Get read status icon
     getReadStatus(message, isMe) {
         if (!isMe) return '';
         if (!message.readBy || message.readBy.length === 0) {
             return this.icons.check;
         }
-        // Check if read by someone other than sender
         const readByOthers = message.readBy.filter(r => r.userId !== message.sender?.userId);
         if (readByOthers.length > 0) {
             return `<span class="wa-read">${this.icons.checkDouble}</span>`;
@@ -750,13 +739,11 @@ const Chat = {
         return this.icons.check;
     },
 
-    // Utility: Get initials from name
     getInitials(name) {
         if (!name) return '?';
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     },
 
-    // Utility: Format time
     formatTime(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
@@ -767,7 +754,6 @@ const Chat = {
         });
     },
 
-    // Utility: Escape HTML
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
