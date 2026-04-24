@@ -194,6 +194,8 @@ router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
+    const io = req.app.get('io');
+if (io) { const { emitBracketUpdate } = require('../socket/bracketEvents'); emitBracketUpdate(io, match.tournament); }
 });
 
 // POST /api/admin/tournaments - CREATE TOURNAMENT WITH FORMAT SUPPORT

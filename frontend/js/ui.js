@@ -242,6 +242,8 @@ const UI = {
                     <button class="btn btn-warning" onclick="UI.startTournament('${tournament._id}')">
                         ${this.icons.play} Start Tournament & Generate Bracket
                     </button>
+                    <button class="btn btn-secondary" onclick="UI.regenerateRound('${tournament._id}', ${tournament.currentRound})">${this.icons.refresh} Generate Next Round</button>
+<button class="btn btn-secondary" onclick="UI.syncBracket('${tournament._id}')">${this.icons.refresh} Sync Bracket</button>
                 </div>
             `;
         }
@@ -264,6 +266,11 @@ const UI = {
         
         return '';
     },
+
+    async syncBracket(tournamentId) {
+    try { UI.showLoading(); await API.syncBracket(tournamentId); UI.showToast('Bracket synced', 'success'); }
+    catch (e) { UI.showToast(e.message, 'error'); } finally { UI.hideLoading(); }
+},
 
     async startTournament(tournamentId) {
         if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;

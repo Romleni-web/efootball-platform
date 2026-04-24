@@ -1,3 +1,4 @@
+const { initBracketEvents } = require('./socket/bracketEvents');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -110,6 +111,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: corsOptions
 });
+initBracketEvents(io);
+app.set('io', io);
 
 // ============================================
 // SOCKET.IO CHAT HANDLERS - WHATSAPP STYLE

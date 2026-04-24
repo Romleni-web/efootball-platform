@@ -1,4 +1,3 @@
-// services/tournamentLogic.js - COMPLETE FIXED VERSION
 const Match = require('../models/Match');
 
 class TournamentLogic {
@@ -48,36 +47,102 @@ class TournamentLogic {
         return idA === idB;
     }
 
-    _shuffleAndSeed(players) {
-        return [...players].sort((a, b) => {
-            if (a.seed && b.seed) return a.seed - b.seed;
-            if (a.seed) return -1;
-            if (b.seed) return 1;
-            return Math.random() - 0.5;
-        });
+    /**
+     * Re-seed players based on original seed or current tournament performance.
+     * Supports multiple re-seeding strategies:
+     * - 'original_seed': Maintain original seeding order (highest vs lowest)
+     * - 'random': Completely random draw
+     * - 'standings': Based on current tournament performance
+     */
+    _shuffleAndSeed(players, method = 'original_seed') {
+        const playersCopy = [...players];
+        
+        switch (method) {
+            case 'original_seed':
+                // Sort by original seed (if available), then random
+                return playersCopy.sort((a, b) => {
+                    const seedA = a.seed !== undefined ? a.seed : (a.registeredPlayers?.find(p => p.user.toString() === (a._id || a).toString())?.seed || Infinity);
+                    const seedB = b.seed !== undefined ? b.seed : (b.registeredPlayers?.find(p => p.user.toString() === (b._id || b).toString())?.seed || Infinity);
+                    if (seedA !== seedB) return seedA - seedB;
+                    return Math.random() - 0.5;
+                });
+                
+            case 'random':
+                // Fisher-Yates shuffle
+                for (let i = playersCopy.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [playersCopy[i], playersCopy[j]] = [playersCopy[j], playersCopy[i]];
+                }
+                return playersCopy;
+                
+            case 'standings':
+                // Sort by current tournament standings (wins, points, etc.)
+                if (this.tournament.standings && this.tournament.standings.length > 0) {
+                    const standingsMap = new Map();
+                    this.tournament.standings.forEach(s => {
+                        standingsMap.set(s.player.toString(), s);
+                    });
+                    
+                    return playersCopy.sort((a, b) => {
+                        const idA = (a._id || a).toString();
+                        const idB = (b._id || b).toString();
+                        const statsA = standingsMap.get(idA);
+                        const statsB = standingsMap.get(idB);
+                        
+                        if (!statsA && !statsB) return Math.random() - 0.5;
+                        if (!statsA) return 1;
+                        if (!statsB) return -1;
+                        
+                        // Sort by points, then wins, then goal difference
+                        if (statsB.points !== statsA.points) return statsB.points - statsA.points;
+                        if (statsB.wins !== statsA.wins) return statsB.wins - statsA.wins;
+                        return statsB.goalDifference - statsA.goalDifference;
+                    });
+                }
+                return playersCopy;
+                
+            default:
+                return playersCopy.sort(() => Math.random() - 0.5);
+        }
     }
 
     _nextPowerOf2(n) {
         return Math.pow(2, Math.ceil(Math.log2(n)));
     }
+
+    /**
+     * Get the re-seeding method from tournament settings
+     */
+    _getReseedMethod() {
+        return this.tournament.settings?.reseedMethod || 'original_seed';
+    }
+
+    /**
+     * Check if dynamic re-seeding is enabled
+     */
+    _isDynamicReseedingEnabled() {
+        return this.tournament.settings?.reseedAfterRound !== false; // Default to true
+    }
 }
 
-// ==================== SINGLE ELIMINATION ====================
+// ==================== SINGLE ELIMINATION (DYNAMIC) ====================
 class SingleEliminationLogic extends TournamentLogic {
+    
+    /**
+     * Generate ONLY Round 1 matches. Subsequent rounds are created dynamically
+     * after each round completes.
+     */
     async generateBracket(players) {
-        const shuffled = this._shuffleAndSeed(players);
+        const shuffled = this._shuffleAndSeed(players, this._getReseedMethod());
         const numPlayers = shuffled.length;
         const bracketSize = this._nextPowerOf2(numPlayers);
         const byes = bracketSize - numPlayers;
-        const rounds = Math.log2(bracketSize);
         
         const matches = [];
         let matchNumber = 1;
-
-        // Round 1 with byes
-        const round1Matches = [];
         let playerIndex = 0;
         
+        // Generate Round 1 only
         for (let i = 0; i < bracketSize / 2; i++) {
             let player1, player2;
             
@@ -93,85 +158,225 @@ class SingleEliminationLogic extends TournamentLogic {
                 tournament: this.tournament._id,
                 round: 1,
                 matchNumber: matchNumber++,
-                player1: player1?.user || null,
-                player2: player2?.user || null,
+                player1: player1?.user || player1?._id || player1 || null,
+                player2: player2?.user || player2?._id || player2 || null,
                 status: player2 ? 'scheduled' : 'completed',
-                winner: player2 ? null : (player1 ? player1.user : null),
-                nextMatch: null
+                winner: player2 ? null : (player1 ? (player1.user || player1._id || player1) : null),
+                nextMatch: null, // No pre-linking in dynamic mode
+                isBronzeMatch: false
             });
 
-            round1Matches.push(match);
             matches.push(match);
         }
 
-        // Subsequent rounds
-        for (let round = 2; round <= rounds; round++) {
-            const matchesInRound = bracketSize / Math.pow(2, round);
-            const roundMatches = [];
-            
-            for (let i = 0; i < matchesInRound; i++) {
-                const match = new Match({
-                    tournament: this.tournament._id,
-                    round: round,
-                    matchNumber: matchNumber++,
-                    player1: null,
-                    player2: null,
-                    status: 'pending',
-                    nextMatch: null
-                });
-                roundMatches.push(match);
-                matches.push(match);
-            }
-            
-            // Link previous round matches to this round
-            const prevRoundMatches = matches.filter(m => m.round === round - 1);
-            for (let i = 0; i < prevRoundMatches.length; i += 2) {
-                const nextMatchIndex = Math.floor(i / 2);
-                if (roundMatches[nextMatchIndex]) {
-                    prevRoundMatches[i].nextMatch = roundMatches[nextMatchIndex]._id;
-                    if (prevRoundMatches[i + 1]) {
-                        prevRoundMatches[i + 1].nextMatch = roundMatches[nextMatchIndex]._id;
-                    }
-                }
-            }
+        // Store total expected rounds for completion checking
+        this.totalRounds = Math.log2(bracketSize);
+        
+        return matches;
+    }
+
+    /**
+     * Generate matches for any round dynamically from winners of previous round.
+     * This is the core of the dynamic bracket system.
+     */
+    async generateNextRound(roundNumber, winners) {
+        if (!winners || winners.length === 0) {
+            throw new Error('No winners provided for next round generation');
         }
 
-        // Bronze match - losers of semifinals go here
-        if (this.tournament.settings.bronzeMatch) {
-            const semifinals = matches.filter(m => m.round === rounds - 1);
-            const bronzeMatch = new Match({
+        // Re-seed winners before creating matches
+        const reseeded = this._shuffleAndSeed(winners, this._getReseedMethod());
+        const matches = [];
+        
+        // Handle odd number of winners - give one a bye
+        let processedWinners = [...reseeded];
+        if (processedWinners.length % 2 !== 0) {
+            // Give bye to the highest seed (first in reseeded array)
+            const byePlayer = processedWinners.shift();
+            matches.push(new Match({
                 tournament: this.tournament._id,
-                round: rounds,
-                matchNumber: matchNumber,
-                isBronzeMatch: true,
-                player1: null,
+                round: roundNumber,
+                matchNumber: 1,
+                player1: byePlayer?.user || byePlayer?._id || byePlayer,
                 player2: null,
-                status: 'pending',
-                nextMatch: null
-            });
-            matches.push(bronzeMatch);
+                status: 'completed',
+                winner: byePlayer?.user || byePlayer?._id || byePlayer,
+                nextMatch: null,
+                isBye: true
+            }));
+        }
+
+        // Create matches from remaining winners
+        const numMatches = Math.floor(processedWinners.length / 2);
+        for (let i = 0; i < numMatches; i++) {
+            const player1 = processedWinners[i * 2];
+            const player2 = processedWinners[i * 2 + 1];
             
-            if (semifinals.length === 2) {
-                semifinals.forEach(sf => {
-                    sf.bronzeMatch = bronzeMatch._id;
-                });
-            }
+            matches.push(new Match({
+                tournament: this.tournament._id,
+                round: roundNumber,
+                matchNumber: matches.length + 1,
+                player1: player1?.user || player1?._id || player1,
+                player2: player2?.user || player2?._id || player2,
+                status: 'scheduled',
+                winner: null,
+                nextMatch: null,
+                isBye: false
+            }));
         }
 
         return matches;
     }
 
+    /**
+     * Advance winner - in dynamic mode, this checks if round is complete
+     * and triggers next round generation.
+     */
     async advanceWinner(match) {
+        if (!match.winner) return null;
+        
+        // In dynamic mode, we don't use nextMatch pointers
+        // Instead, we check if the entire round is complete and generate next round
+        if (this._isDynamicReseedingEnabled()) {
+            return await this._checkAndGenerateNextRound(match);
+        }
+        
+        // Fallback to legacy static bracket advancement
+        return await this._legacyAdvanceWinner(match);
+    }
+
+    /**
+     * Check if current round is complete, and if so, generate next round
+     */
+    async _checkAndGenerateNextRound(completedMatch) {
+        const currentRound = completedMatch.round;
+        
+        // Get all matches in current round from tournament
+        const allMatches = await Match.find({ 
+            tournament: this.tournament._id, 
+            round: currentRound 
+        });
+        
+        // Check if all matches in this round are completed
+        const allCompleted = allMatches.every(m => 
+            ['completed', 'bye'].includes(m.status)
+        );
+        
+        if (!allCompleted) {
+            return null; // Round not complete yet
+        }
+
+        // Check if this was the final round
+        const activePlayers = allMatches.filter(m => m.status !== 'bye').length;
+        if (activePlayers <= 1 && allMatches.length <= 1) {
+            // Tournament complete - handle bronze match if needed
+            if (this.tournament.settings?.bronzeMatch && currentRound >= 2) {
+                return await this._generateBronzeMatch(allMatches);
+            }
+            return null;
+        }
+
+        // Collect winners from current round
+        const winners = allMatches
+            .filter(m => m.winner)
+            .map(m => m.winner);
+
+        if (winners.length === 0) {
+            return null;
+        }
+
+        // Check if next round already exists (prevent duplicate generation)
+        const existingNextRound = await Match.findOne({
+            tournament: this.tournament._id,
+            round: currentRound + 1
+        });
+        
+        if (existingNextRound) {
+            return null; // Next round already generated
+        }
+
+        // Generate next round matches
+        const nextRoundMatches = await this.generateNextRound(currentRound + 1, winners);
+        
+        // Save all new matches
+        const savedMatches = await Match.insertMany(nextRoundMatches);
+        
+        // Update tournament with new matches
+        const tournament = await Tournament.findById(this.tournament._id);
+        if (tournament) {
+            tournament.matches.push(...savedMatches.map(m => m._id));
+            tournament.currentRound = currentRound + 1;
+            await tournament.save();
+        }
+        
+        return savedMatches;
+    }
+
+    /**
+     * Generate bronze match for 3rd place from semifinal losers
+     */
+    async _generateBronzeMatch(semifinalMatches) {
+        // Get semifinal matches (round before current)
+        const round = semifinalMatches[0]?.round;
+        const semifinals = await Match.find({
+            tournament: this.tournament._id,
+            round: round - 1,
+            status: 'completed'
+        });
+
+        if (semifinals.length !== 2) return null;
+
+        // Get losers from semifinals
+        const losers = semifinals.map(m => {
+            if (!m.winner || !m.player1 || !m.player2) return null;
+            return m.player1.equals(m.winner) ? m.player2 : m.player1;
+        }).filter(Boolean);
+
+        if (losers.length !== 2) return null;
+
+        // Check if bronze match already exists
+        const existingBronze = await Match.findOne({
+            tournament: this.tournament._id,
+            isBronzeMatch: true
+        });
+        
+        if (existingBronze) return null;
+
+        const bronzeMatch = new Match({
+            tournament: this.tournament._id,
+            round: round,
+            matchNumber: 999,
+            player1: losers[0],
+            player2: losers[1],
+            status: 'scheduled',
+            isBronzeMatch: true,
+            winner: null
+        });
+
+        const saved = await bronzeMatch.save();
+        
+        const tournament = await Tournament.findById(this.tournament._id);
+        if (tournament) {
+            tournament.matches.push(saved._id);
+            await tournament.save();
+        }
+        
+        return [saved];
+    }
+
+    /**
+     * Legacy static bracket advancement (fallback)
+     */
+    async _legacyAdvanceWinner(match) {
         if (!match.winner) return null;
         const winnerId = (match.winner?._id || match.winner).toString();
         if (!winnerId) return null;
 
         // Handle bronze match for losers
         let bronzeUpdate = null;
-        if (this.tournament.settings.bronzeMatch && match.bronzeMatch) {
+        if (this.tournament.settings?.bronzeMatch && match.bronzeMatch) {
             bronzeUpdate = await this._advanceToBronze(match);
         }
-        // Continue to advance winner even if bronze match was handled
 
         const nextMatchId = match.nextMatch?._id || match.nextMatch;
         if (!nextMatchId) return null;
@@ -179,7 +384,6 @@ class SingleEliminationLogic extends TournamentLogic {
         const nextMatch = await Match.findById(nextMatchId);
         if (!nextMatch) return null;
 
-        // Determine slot: odd matchNumbers → player1, even → player2
         const isPlayer1Slot = match.matchNumber % 2 !== 0;
         
         const updateData = {};
@@ -234,17 +438,20 @@ class SingleEliminationLogic extends TournamentLogic {
     getFinalRankings(matches) {
         const rankings = [];
         const nonBronzeMatches = matches.filter(m => !m.isBronzeMatch);
-        const finalMatch = nonBronzeMatches.reduce((max, m) => m.round > max.round ? m : max, nonBronzeMatches[0]);
+        
+        // Find the final match (highest round number)
+        const finalMatch = nonBronzeMatches.reduce((max, m) => 
+            m.round > max.round ? m : max, nonBronzeMatches[0]);
         
         if (finalMatch?.winner) {
             rankings.push({ rank: 1, player: finalMatch.winner });
-            rankings.push({ 
-                rank: 2, 
-                player: finalMatch.player1.equals(finalMatch.winner) ? finalMatch.player2 : finalMatch.player1 
-            });
+            const runnerUp = finalMatch.player1.equals(finalMatch.winner) 
+                ? finalMatch.player2 
+                : finalMatch.player1;
+            rankings.push({ rank: 2, player: runnerUp });
         }
 
-        if (this.tournament.settings.bronzeMatch) {
+        if (this.tournament.settings?.bronzeMatch) {
             const bronzeMatch = matches.find(m => m.isBronzeMatch);
             if (bronzeMatch?.winner) {
                 rankings.push({ rank: 3, player: bronzeMatch.winner });
@@ -253,9 +460,29 @@ class SingleEliminationLogic extends TournamentLogic {
 
         return rankings;
     }
+
+    /**
+     * Check if tournament is complete - works for both dynamic and static modes
+     */
+    isTournamentComplete() {
+        const matches = this.tournament.matches || [];
+        if (matches.length === 0) return false;
+        
+        // For dynamic mode: check if we have a final match that's completed
+        const maxRound = Math.max(...matches.map(m => m.round || 0));
+        const finalRoundMatches = matches.filter(m => m.round === maxRound);
+        
+        // If only one match in highest round and it's completed, tournament is done
+        if (finalRoundMatches.length === 1 && finalRoundMatches[0].status === 'completed') {
+            return true;
+        }
+        
+        // Fallback: all matches completed
+        return matches.every(m => ['completed', 'bye'].includes(m.status));
+    }
 }
 
-// ==================== ROUND ROBIN ====================
+// ==================== ROUND ROBIN (unchanged) ====================
 class RoundRobinLogic extends TournamentLogic {
     async generateBracket(players) {
         const matches = [];
@@ -352,8 +579,7 @@ class RoundRobinLogic extends TournamentLogic {
         }).sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-            if (b.wins !== a.wins) return b.wins - a.wins; // Enhanced tie-breaker
-            if (b.wins !== a.wins) return b.wins - a.wins; // More wins ranks higher
+            if (b.wins !== a.wins) return b.wins - a.wins;
             return b.goalsFor - a.goalsFor;
         });
 
@@ -369,7 +595,7 @@ class RoundRobinLogic extends TournamentLogic {
     }
 }
 
-// ==================== SWISS SYSTEM ====================
+// ==================== SWISS SYSTEM (unchanged) ====================
 class SwissLogic extends TournamentLogic {
     async generateBracket(players) {
         const shuffled = this._shuffleAndSeed(players);
@@ -525,7 +751,7 @@ class SwissLogic extends TournamentLogic {
     }
 }
 
-// ==================== DOUBLE ELIMINATION (COMPLETE) ====================
+// ==================== DOUBLE ELIMINATION (unchanged) ====================
 class DoubleEliminationLogic extends TournamentLogic {
     async generateBracket(players) {
         const matches = [];
@@ -548,7 +774,6 @@ class DoubleEliminationLogic extends TournamentLogic {
         const losersMatches = [];
         let losersMatchNum = 1000;
         
-        // Losers bracket rounds
         for (let round = 1; round <= (winnersRounds * 2) - 2; round++) {
             const numMatches = this._getLosersRoundMatchCount(round, winnersRounds);
             for (let i = 0; i < numMatches; i++) {
@@ -567,10 +792,7 @@ class DoubleEliminationLogic extends TournamentLogic {
             }
         }
         
-        // Link losers bracket
         this._linkLosersBracket(losersMatches);
-        
-        // Link winners to losers
         this._linkWinnersToLosers(matches, losersMatches, winnersRounds);
         
         matches.push(...losersMatches);
@@ -588,7 +810,6 @@ class DoubleEliminationLogic extends TournamentLogic {
         });
         matches.push(grandFinals);
 
-        // Grand Finals Reset
         const grandFinalsReset = new Match({
             tournament: this.tournament._id,
             round: 999,
@@ -706,10 +927,7 @@ class DoubleEliminationLogic extends TournamentLogic {
         const nextMatch = await winnersLogic.advanceWinner(match);
         if (nextMatch) return nextMatch;
 
-        // Fallback: If nextMatch pointer is null, calculate it dynamically
         const nextRound = match.round + 1;
-        // In winners bracket, match numbering is sequential. 
-        // We find the relative index of the current match in its round.
         const currentRoundMatches = winnersMatches
             .filter(m => m.round === match.round)
             .sort((a, b) => a.matchNumber - b.matchNumber);
@@ -728,7 +946,6 @@ class DoubleEliminationLogic extends TournamentLogic {
                 
                 const updateData = isPlayer1Slot ? { player1: match.winner } : { player2: match.winner };
                 
-                // Check if match should be scheduled
                 const currentTarget = await Match.findById(targetMatch._id);
                 const willHaveP1 = isPlayer1Slot ? match.winner : currentTarget.player1;
                 const willHaveP2 = isPlayer1Slot ? currentTarget.player2 : match.winner;

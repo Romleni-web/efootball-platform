@@ -187,6 +187,19 @@ router.post('/:id/generate-bracket', auth, adminOnly, async (req, res) => {
     }
 });
 
+router.post('/:id/generate-next-round', auth, adminOnly, async (req, res) => {
+    try {
+        const tournament = await Tournament.findById(req.params.id);
+        const currentRound = tournament.currentRound || 1;
+        const roundMatches = await Match.find({ tournament: tournament._id, round: currentRound });
+        if (!roundMatches.every(m => ['completed','bye'].includes(m.status))) {
+            return res.status(400).json({ error: 'Round not complete', completed: roundMatches.filter(m => ['completed','bye'].includes(m.status)).length, total: roundMatches.length });
+        }
+        const result = await adminService.regenerateRound(tournament._id, currentRound);
+        res.json(result);
+    } catch (error) { res.status(500).json({ message: error.message }); }
+});
+
 // POST regenerate round - ADMIN ONLY
 router.post('/:id/regenerate-round', auth, adminOnly, async (req, res) => {
     try {
@@ -201,6 +214,16 @@ router.post('/:id/regenerate-round', auth, adminOnly, async (req, res) => {
         console.error('Regenerate round error:', error);
         res.status(500).json({ message: error.message });
     }
+});
+
+router.post('/:id/sync-bracket', auth, adminOnly, async (req, res) => {
+    try { res.json(await adminService.syncTournamentBracket(req.params.id)); }
+    catch (error) { res.status(500).json({ message: error.message }); }
+});
+
+router.post('/:id/force-generate-round', auth, adminOnly, async (req, res) => {
+    try { res.json(await adminService.forceGenerateRound(req.params.id, req.body.roundNumber, req.body.playerIds)); }
+    catch (error) { res.status(500).json({ message: error.message }); }
 });
 
 // POST register for tournament - AUTH REQUIRED

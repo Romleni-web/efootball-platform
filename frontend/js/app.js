@@ -754,6 +754,18 @@ const Pages = {
             return '<div class="empty-state"><p>Login to view bracket</p></div>';
         }
 
+        if (!window._bracketSocketInit) {
+    API.initSocket();
+    if (API.socket) {
+        API.socket.emit('join-tournament', tournamentId);
+        API.socket.on('bracket-update', (data) => {
+            const container = document.querySelector('.bracket');
+            if (container) container.outerHTML = this.renderBracketFromData(data.matches);
+        });
+    }
+    window._bracketSocketInit = true;
+}
+
         try {
             const data = await API.getTournamentBracket(tournamentId);
             const rounds = data.rounds || data;
@@ -803,6 +815,12 @@ const Pages = {
             return `<div class="empty-state"><p>Unable to load bracket: ${error.message}</p></div>`;
         }
     },
+
+    renderBracketFromData(matches) {
+    const rounds = {};
+    matches.forEach(m => { if (!rounds[m.round]) rounds[m.round] = []; rounds[m.round].push(m); });
+    return `<div class="bracket">${Object.keys(rounds).sort((a,b)=>a-b).map(r=>`<div class="round"><h4 class="round-title">Round ${r}</h4>${rounds[r].map(m=>`<div class="match ${m.status}"><div class="player ${m.winner?._id===m.player1?._id?'winner':''} ${!m.player1?'tbd':''}"><span class="player-name">${m.player1?.username||'TBD'}</span><span class="player-score">${m.score1??'-'}</span></div><div class="player ${m.winner?._id===m.player2?._id?'winner':''} ${!m.player2?'tbd':''}"><span class="player-name">${m.player2?.username||'TBD'}</span><span class="player-score">${m.score2??'-'}</span></div></div>`).join('')}</div>`).join('')}</div>`;
+},
 
     renderPlayersList(players) {
         if (!players || players.length === 0) {

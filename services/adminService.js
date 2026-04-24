@@ -2,6 +2,10 @@ const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const { TournamentLogicFactory } = require('./tournamentLogic');
 
+/**
+ * Resolve a match result and handle tournament advancement.
+ * In dynamic mode, automatically generates the next round when all matches in current round complete.
+ */
 const resolveMatchResult = async (matchId, adminUser, resolutionData) => {
     const { decision, score1, score2, winner, reason } = resolutionData;
     const match = await Match.findById(matchId);
@@ -41,6 +45,7 @@ const resolveMatchResult = async (matchId, adminUser, resolutionData) => {
         if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
             tournament.standings = logic.calculateStandings();
         } else {
+            // For single/double elimination, use dynamic advancement
             await logic.advanceWinner(match);
             if (tournament.format === 'double_elimination' && logic.advanceLoser) {
                 await logic.advanceLoser(match);
@@ -65,7 +70,8 @@ const resolveMatchResult = async (matchId, adminUser, resolutionData) => {
 
 /**
  * Self-healing function to fix stuck brackets.
- * Iterates through all completed matches and ensures winners have advanced.
+ * For dynamic mode: detects if next round needs to be generated and creates it.
+ * For static mode: iterates through all completed matches and ensures winners have advanced.
  */
 const syncTournamentBracket = async (tournamentId) => {
     const tournament = await Tournament.findById(tournamentId);
@@ -76,11 +82,60 @@ const syncTournamentBracket = async (tournamentId) => {
 
     console.log(`Syncing bracket for: ${tournament.name}`);
     
-    // 1. Process all completed matches to ensure advancement
-    const completedMatches = matches.filter(m => ['completed', 'bye'].includes(m.status) && m.winner);
+    // Check if we're in dynamic mode (single elimination with reseeding enabled)
+    const isDynamic = tournament.format === 'single_elimination' && 
+                      tournament.settings?.reseedAfterRound !== false;
     
-    // Sort by round/matchNumber to ensure we advance in the correct order
-    completedMatches.sort((a, b) => (a.round - b.round) || (a.matchNumber - b.matchNumber));
+    if (isDynamic) {
+        // Dynamic mode: find the highest completed round and generate next if needed
+        const completedRounds = [...new Set(matches.filter(m => 
+            ['completed', 'bye'].includes(m.status) && m.winner
+        ).map(m => m.round))].sort((a, b) => a - b);
+        
+        if (completedRounds.length > 0) {
+            const lastCompletedRound = completedRounds[completedRounds.length - 1];
+            const nextRoundExists = matches.some(m => m.round === lastCompletedRound + 1);
+            
+            if (!nextRoundExists) {
+                // Generate next round
+                const roundMatches = matches.filter(m => m.round === lastCompletedRound);
+                const allCompleted = roundMatches.every(m => 
+                    ['completed', 'bye'].includes(m.status)
+                );
+                
+                if (allCompleted) {
+                    const winners = roundMatches.filter(m => m.winner).map(m => m.winner);
+                    if (winners.length > 1) {
+                        console.log(`Generating round ${lastCompletedRound + 1} from sync...`);
+                        const nextMatches = await logic.generateNextRound(lastCompletedRound + 1, winners);
+                        const saved = await Match.insertMany(nextMatches);
+                        tournament.matches.push(...saved.map(m => m._id));
+                        tournament.currentRound = lastCompletedRound + 1;
+                        await tournament.save();
+                        return { 
+                            success: true, 
+                            mode: 'dynamic', 
+                            action: 'generated_next_round',
+                            round: lastCompletedRound + 1,
+                            newMatches: saved.length 
+                        };
+                    }
+                }
+            }
+        }
+        
+        return { 
+            success: true, 
+            mode: 'dynamic', 
+            action: 'no_action_needed',
+            message: 'Bracket is up to date' 
+        };
+    }
+    
+    // Static mode: process all completed matches to ensure advancement
+    const completedMatches = matches.filter(m => 
+        ['completed', 'bye'].includes(m.status) && m.winner
+    ).sort((a, b) => (a.round - b.round) || (a.matchNumber - b.matchNumber));
 
     for (const match of completedMatches) {
         await logic.advanceWinner(match);
@@ -89,18 +144,22 @@ const syncTournamentBracket = async (tournamentId) => {
         }
     }
 
-    // 2. Update standings if it's a round-based tournament
+    // Update standings if it's a round-based tournament
     if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
         tournament.standings = logic.calculateStandings();
         await tournament.save();
     }
 
-    return { success: true, processedMatches: completedMatches.length };
+    return { 
+        success: true, 
+        mode: 'static', 
+        processedMatches: completedMatches.length 
+    };
 };
 
 /**
  * Manually triggers the generation of the next round pairings.
- * Primarily used for Swiss and dynamic re-seeding formats.
+ * Works for both Swiss and dynamic single elimination.
  */
 const regenerateRound = async (tournamentId, roundNumber) => {
     const tournament = await Tournament.findById(tournamentId).populate('matches');
@@ -112,6 +171,30 @@ const regenerateRound = async (tournamentId, roundNumber) => {
     const roundMatch = tournament.matches.find(m => m.round === roundNumber && m.status === 'completed');
     if (!roundMatch) throw new Error(`No completed matches found in round ${roundNumber} to trigger regeneration.`);
 
+    // For dynamic single elimination, use generateNextRound
+    if (tournament.format === 'single_elimination' && logic.generateNextRound) {
+        const roundMatches = await Match.find({ 
+            tournament: tournamentId, 
+            round: roundNumber 
+        });
+        const winners = roundMatches.filter(m => m.winner).map(m => m.winner);
+        
+        if (winners.length === 0) {
+            return { success: false, message: 'No winners found to generate next round.' };
+        }
+        
+        const nextMatches = await logic.generateNextRound(roundNumber + 1, winners);
+        
+        if (Array.isArray(nextMatches) && nextMatches.length > 0) {
+            const saved = await Match.insertMany(nextMatches);
+            tournament.matches.push(...saved.map(m => m._id));
+            tournament.currentRound = roundNumber + 1;
+            await tournament.save();
+            return { success: true, newMatches: saved.length, round: roundNumber + 1 };
+        }
+    }
+    
+    // Fallback to legacy behavior for Swiss
     const nextMatches = await logic.advanceWinner(roundMatch);
     
     if (Array.isArray(nextMatches) && nextMatches.length > 0) {
@@ -123,6 +206,44 @@ const regenerateRound = async (tournamentId, roundNumber) => {
     }
     
     return { success: false, message: 'No new matches were generated for the next round.' };
+};
+
+/**
+ * Force generate a specific round (admin override).
+ * Useful for manual bracket adjustments or recovery.
+ */
+const forceGenerateRound = async (tournamentId, roundNumber, playerIds) => {
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) throw new Error('Tournament not found');
+
+    const logic = TournamentLogicFactory.create(tournament);
+    
+    if (!logic.generateNextRound) {
+        throw new Error('This tournament format does not support dynamic round generation');
+    }
+
+    // Verify all players are valid ObjectIds
+    const validPlayers = playerIds.filter(id => mongoose.isValidObjectId(id));
+    
+    if (validPlayers.length < 2) {
+        throw new Error('At least 2 valid players required to generate a round');
+    }
+
+    const matches = await logic.generateNextRound(roundNumber, validPlayers);
+    const saved = await Match.insertMany(matches);
+    
+    tournament.matches.push(...saved.map(m => m._id));
+    if (roundNumber > tournament.currentRound) {
+        tournament.currentRound = roundNumber;
+    }
+    await tournament.save();
+
+    return {
+        success: true,
+        round: roundNumber,
+        newMatches: saved.length,
+        matches: saved
+    };
 };
 
 const getPrizeDistributionList = async (tournamentId) => {
@@ -150,5 +271,6 @@ module.exports = {
     resolveMatchResult,
     calculatePrize,
     syncTournamentBracket,
-    regenerateRound
+    regenerateRound,
+    forceGenerateRound
 };

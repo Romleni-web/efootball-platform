@@ -1,4 +1,3 @@
-// models/Tournament.js - FIXED VERSION
 const mongoose = require('mongoose');
 
 const tournamentSchema = new mongoose.Schema({
@@ -26,7 +25,19 @@ const tournamentSchema = new mongoose.Schema({
         swissRounds: { type: Number, default: 5 },
         maxPlayers: { type: Number, default: 32 },
         minPlayers: { type: Number, default: 2 },
-        registrationDeadline: { type: Date }
+        registrationDeadline: { type: Date },
+        // NEW: Dynamic bracket re-seeding settings
+        reseedAfterRound: { 
+            type: Boolean, 
+            default: true,
+            description: 'If true, bracket is re-generated after each round with winners re-seeded'
+        },
+        reseedMethod: {
+            type: String,
+            enum: ['original_seed', 'random', 'standings'],
+            default: 'original_seed',
+            description: 'How to re-seed winners for next round: original_seed (highest vs lowest), random, or standings-based'
+        }
     },
     entryFee: {
         type: Number,
@@ -42,7 +53,6 @@ const tournamentSchema = new mongoose.Schema({
         second: { type: Number, default: 30 },
         third: { type: Number, default: 20 }
     },
-    // NEW: Prize distribution tracking
     prizeDistributionStatus: {
         type: String,
         enum: ['pending', 'initiated', 'completed', 'failed', 'partial'],
@@ -134,19 +144,16 @@ const tournamentSchema = new mongoose.Schema({
 tournamentSchema.index({ status: 1, format: 1 });
 tournamentSchema.index({ 'registeredPlayers.user': 1 });
 
-// Helper to check if tournament can be finished
 tournamentSchema.methods.canFinish = function() {
     return this.status === 'ongoing';
 };
 
-// Helper to get prize for rank
 tournamentSchema.methods.getPrizeForRank = function(rank) {
     const distribution = this.prizeDistribution;
     const percentages = [distribution?.first || 50, distribution?.second || 30, distribution?.third || 20];
     return Math.floor(this.prizePool * (percentages[rank - 1] || 0) / 100);
 };
 
-// NEW: Helper to finalize tournament results
 tournamentSchema.methods.finalizeResults = function(rankings) {
     this.status = 'finished';
     this.winners = rankings.map((r, i) => ({

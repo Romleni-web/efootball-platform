@@ -318,6 +318,16 @@ const API = {
         });
     },
 
+    async generateNextRound(tournamentId) {
+    return this.authenticatedRequest(`/tournaments/${tournamentId}/generate-next-round`, { method: 'POST' });
+},
+async syncBracket(tournamentId) {
+    return this.authenticatedRequest(`/tournaments/${tournamentId}/sync-bracket`, { method: 'POST' });
+},
+async updateTournamentSettings(tournamentId, settings) {
+    return this.authenticatedRequest(`/tournaments/${tournamentId}/settings`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+},
+
     async getAdminStats() {
         return this.authenticatedRequest('/admin/stats');
     },

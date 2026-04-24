@@ -172,6 +172,9 @@ router.post('/:id/result', auth, upload.fields([
                 } else if (['round_robin', 'league', 'swiss'].includes(tournament.format)) {
                     tournament.standings = logic.calculateStandings();
                     await tournament.save();
+
+                    const io = req.app.get('io');
+if (io) { const { emitBracketUpdate } = require('../socket/bracketEvents'); emitBracketUpdate(io, tournament._id); }
                 }
             }
 

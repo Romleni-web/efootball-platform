@@ -1,4 +1,3 @@
-// models/Match.js - FIXED VERSION
 const mongoose = require('mongoose');
 
 const matchSchema = new mongoose.Schema({
@@ -51,6 +50,11 @@ const matchSchema = new mongoose.Schema({
         default: null
     },
     isBronzeMatch: {
+        type: Boolean,
+        default: false
+    },
+    // NEW: Track if this match was a bye (auto-advance)
+    isBye: {
         type: Boolean,
         default: false
     },
@@ -135,8 +139,6 @@ matchSchema.methods.submissionsMatch = function() {
         s1.winner === s2.winner;
 
     // Mirrored orientation: P2 submitted from their perspective
-    // P1's score1 = P2's score2 (P1's goals), P1's score2 = P2's score1 (P2's goals)
-    // Winner labels must be opposite AND map correctly to actual players
     const mirroredOrientation =
         s1.score1 === s2.score2 &&
         s1.score2 === s2.score1 &&
