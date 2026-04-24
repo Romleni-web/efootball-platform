@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // Get chat history with pagination
 router.get('/history/:roomId', auth, async (req, res) => {

@@ -68,7 +68,8 @@ const routes = [
     { path: '/api/payments', module: './routes/payments' },
     { path: '/api/matches', module: './routes/matches' },
     { path: '/api/admin', module: './routes/admin' },
-    { path: '/api/chat', module: './routes/chat' }
+    { path: '/api/chat', module: './routes/chat' },
+    { path: '/api/notifications', module: './routes/notifications' }
 ];
 
 for (const route of routes) {
