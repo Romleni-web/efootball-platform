@@ -154,6 +154,48 @@ const API = {
         return this.handleResponse(response);
     },
 
+       // ============================================
+    // CHAT UTILITIES - WHATSAPP STYLE
+    // ============================================
+
+    socket: null,
+    initSocket() {
+        if (this.socket || typeof io === 'undefined') return;
+        this.socket = io(SOCKET_URL);
+        
+        // Initialize Chat module when socket is ready
+        this.socket.on('connect', () => {
+            console.log('Socket connected');
+            if (window.Chat && !Chat.socket) {
+                Chat.init();
+            }
+        });
+    },
+
+    joinChat(roomId) {
+        this.initSocket();
+        if (this.socket && window.Chat) {
+            Chat.joinRoom(roomId);
+        }
+    },
+
+    sendMessage(roomId, message) {
+        // Legacy fallback - Chat module handles this now
+        const user = Auth.getUser();
+        if (!user || !this.socket) return;
+        
+        this.socket.emit('send-message', {
+            roomId,
+            content: message,
+            user: {
+                username: user.username,
+                userId: user._id,
+                avatar: user.avatar || ''
+            },
+            type: roomId === 'global' ? 'global' : 'match'
+        });
+    },
+
     // ============================================
     // MATCH RESULT SUBMISSION - DUAL SYSTEM
     // ============================================

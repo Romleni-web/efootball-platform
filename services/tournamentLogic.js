@@ -353,6 +353,7 @@ class RoundRobinLogic extends TournamentLogic {
             if (b.points !== a.points) return b.points - a.points;
             if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
             if (b.wins !== a.wins) return b.wins - a.wins; // Enhanced tie-breaker
+            if (b.wins !== a.wins) return b.wins - a.wins; // More wins ranks higher
             return b.goalsFor - a.goalsFor;
         });
 

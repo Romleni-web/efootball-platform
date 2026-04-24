@@ -162,10 +162,15 @@ function wireLegacyInlineHandlers(root = document) {
 
 const ChatUI = {
     render(roomId, title = 'Community Chat') {
-        API.joinChat(roomId);
-        const containerId = `chat-${roomId}`;
+        API.initSocket();
+        
+        if (window.Chat) {
+            Chat.joinRoom(roomId, title);
+            return Chat.render(roomId, title);
+        }
+        
         return `
-            <div class="chat-container" id="${containerId}" data-room="${roomId}">
+            <div class="chat-container" id="chat-${roomId}" data-room="${roomId}">
                 <div class="chat-header">${title}</div>
                 <div class="chat-messages" id="messages-${roomId}"></div>
                 <form class="chat-input-area" id="form-${roomId}">
@@ -177,6 +182,11 @@ const ChatUI = {
     },
 
     attachListeners(roomId) {
+        if (window.Chat) {
+            Chat.attachListeners(roomId);
+            return;
+        }
+
         const form = document.getElementById(`form-${roomId}`);
         const input = document.getElementById(`input-${roomId}`);
         const messages = document.getElementById(`messages-${roomId}`);
