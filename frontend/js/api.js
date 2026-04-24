@@ -154,7 +154,7 @@ const API = {
         return this.handleResponse(response);
     },
 
-    // ============================================
+        // ============================================
     // CHAT UTILITIES - WHATSAPP STYLE
     // ============================================
 
@@ -162,35 +162,53 @@ const API = {
     socketReady: false,
     
     initSocket() {
-        if (this.socket || typeof io === 'undefined') return;
+        if (this.socket || typeof io === 'undefined') {
+            console.log('Socket already exists or io not available');
+            return;
+        }
         
-        this.socket = io(SOCKET_URL);
+        console.log('Initializing socket connection to:', SOCKET_URL);
+        this.socket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling'],
+            timeout: 10000,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
         
         this.socket.on('connect', () => {
-            console.log('Socket connected');
+            console.log('Socket connected, ID:', this.socket.id);
             this.socketReady = true;
             // Initialize Chat module when socket connects
             if (window.Chat && !Chat.initialized) {
                 Chat.init();
             }
+            // Flush any queued messages
+            if (window.Chat) {
+                Chat.flushMessageQueue();
+            }
         });
         
-        this.socket.on('disconnect', () => {
-            console.log('Socket disconnected');
+        this.socket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
             this.socketReady = false;
         });
         
         this.socket.on('connect_error', (err) => {
             console.error('Socket connection error:', err.message);
+            this.socketReady = false;
+        });
+        
+        this.socket.on('reconnect', (attemptNumber) => {
+            console.log('Socket reconnected after', attemptNumber, 'attempts');
+            this.socketReady = true;
         });
     },
 
     joinChat(roomId) {
         this.initSocket();
         
-        // If Chat module is available, use it
         if (window.Chat) {
-            // Ensure Chat is initialized before joining
             if (!Chat.initialized) {
                 Chat.init();
             }
@@ -209,9 +227,7 @@ const API = {
         const user = Auth.getUser();
         if (!user || !this.socket) return;
         
-        // Use Chat module if available
         if (window.Chat && Chat.initialized) {
-            // Chat handles its own sending
             return;
         }
         

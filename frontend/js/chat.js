@@ -1,18 +1,15 @@
 const Chat = {
-    // SVG Icons (no emojis)
+    // SVG Icons
     icons: {
         send: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>',
         smile: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
-        paperclip: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>',
         check: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
         checkDouble: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 6 9 17 4 12" transform="translate(4,0)"></polyline></svg>',
         reply: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>',
         more: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>',
         close: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
         online: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="#10b981" stroke="none"><circle cx="12" cy="12" r="10"></circle></svg>',
-        typing: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
         trash: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
-        chevronDown: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>',
         users: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
         arrowDown: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>'
     },
@@ -25,40 +22,79 @@ const Chat = {
     socket: null,
     replyTo: null,
     initialized: false,
+    messageQueue: [],
 
     init() {
-        if (this.initialized) return;
-        this.initialized = true;
+        if (this.initialized) {
+            console.log('Chat already initialized');
+            return;
+        }
         
+        console.log('Initializing Chat module...');
+        this.initialized = true;
         this.currentUser = Auth.getUser();
         
         // Ensure socket is initialized via API
         if (!API.socket) {
+            console.log('Socket not found, initializing via API...');
             API.initSocket();
         }
+        
         this.socket = API.socket;
         
         if (this.socket) {
+            console.log('Socket found, setting up listeners');
             this.setupSocketListeners();
         } else {
-            // Retry after a short delay if socket not ready
-            setTimeout(() => {
-                if (API.socket && !this.socket) {
+            console.log('Socket not ready, will retry...');
+            // Retry after socket connects
+            const checkSocket = setInterval(() => {
+                if (API.socket) {
+                    console.log('Socket now available');
                     this.socket = API.socket;
                     this.setupSocketListeners();
+                    clearInterval(checkSocket);
                 }
             }, 500);
+            // Stop checking after 10 seconds
+            setTimeout(() => clearInterval(checkSocket), 10000);
         }
     },
 
     setupSocketListeners() {
-        if (!this.socket) return;
+        if (!this.socket) {
+            console.error('Cannot setup listeners: no socket');
+            return;
+        }
+
+        console.log('Setting up socket listeners');
+
+        this.socket.on('connect', () => {
+            console.log('Chat: socket connected');
+            this.updateConnectionStatus(this.currentRoom, true);
+            this.flushMessageQueue();
+            // Re-join current room if we have one
+            if (this.currentRoom) {
+                this.joinRoom(this.currentRoom);
+            }
+        });
+
+        this.socket.on('disconnect', (reason) => {
+            console.log('Chat: socket disconnected:', reason);
+            this.updateConnectionStatus(this.currentRoom, false);
+        });
+
+        this.socket.on('connect_error', (err) => {
+            console.error('Chat: socket error:', err.message);
+        });
 
         this.socket.on('new-message', (data) => {
+            console.log('Received new message:', data);
             this.handleNewMessage(data);
         });
 
         this.socket.on('message-history', (data) => {
+            console.log('Received message history:', data.messages?.length, 'messages');
             this.handleMessageHistory(data);
         });
 
@@ -94,6 +130,7 @@ const Chat = {
 
     ensureSocket() {
         if (!this.socket) {
+            console.log('ensureSocket: no socket, trying to init...');
             API.initSocket();
             this.socket = API.socket;
             if (this.socket && !this.initialized) {
@@ -101,19 +138,25 @@ const Chat = {
                 this.initialized = true;
             }
         }
+        
+        if (!this.socket) {
+            console.warn('ensureSocket: socket still not available');
+        }
+        
         return this.socket;
     },
 
     joinRoom(roomId, title) {
-        // Ensure Chat is initialized first
+        console.log('joinRoom called:', roomId);
+        
         if (!this.initialized) {
             this.init();
         }
         
-        // Ensure socket is ready
         if (!this.ensureSocket()) {
-            console.warn('Socket not available, retrying joinRoom...');
-            setTimeout(() => this.joinRoom(roomId, title), 300);
+            console.warn('Socket not available, will join when connected');
+            // Queue room join
+            this.pendingRoomJoin = roomId;
             return;
         }
 
@@ -131,6 +174,7 @@ const Chat = {
 
         const user = this.currentUser || { username: 'Guest', userId: null, avatar: '' };
         
+        console.log('Emitting join-room for:', roomId);
         this.socket.emit('join-room', {
             roomId,
             user: {
@@ -148,6 +192,11 @@ const Chat = {
         
         return `
             <div class="wa-chat-container" id="${containerId}" data-room="${roomId}">
+                <div class="wa-connection-status" id="conn-status-${roomId}" style="display:none;">
+                    <span class="wa-conn-dot"></span>
+                    <span>Disconnected - reconnecting...</span>
+                </div>
+                
                 <div class="wa-chat-header">
                     <div class="wa-chat-header-info">
                         <div class="wa-chat-avatar">
@@ -237,10 +286,14 @@ const Chat = {
     },
 
     attachListeners(roomId) {
+        console.log('Attaching listeners for room:', roomId);
         const input = document.getElementById(`input-${roomId}`);
         const messagesContainer = document.getElementById(`messages-${roomId}`);
         
-        if (!input || !messagesContainer) return;
+        if (!input || !messagesContainer) {
+            console.error('Could not find input or messages container');
+            return;
+        }
 
         messagesContainer.addEventListener('scroll', () => {
             const room = this.rooms.get(roomId);
@@ -266,10 +319,25 @@ const Chat = {
         setTimeout(() => input.focus(), 100);
     },
 
+    updateConnectionStatus(roomId, isConnected) {
+        const statusEl = document.getElementById(`conn-status-${roomId}`);
+        if (statusEl) {
+            statusEl.style.display = isConnected ? 'none' : 'flex';
+        }
+        const headerStatus = document.getElementById(`status-${roomId}`);
+        if (headerStatus && isConnected) {
+            headerStatus.querySelector('.wa-status-text').textContent = 'connected';
+        }
+    },
+
     handleNewMessage(data) {
+        console.log('handleNewMessage:', data);
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
-        if (!room) return;
+        if (!room) {
+            console.warn('Room not found:', roomId);
+            return;
+        }
 
         room.messages.push(data);
         this.renderMessage(data, roomId);
@@ -285,11 +353,12 @@ const Chat = {
     },
 
     handleMessageHistory(data) {
+        console.log('handleMessageHistory:', data.messages?.length, 'messages');
         const roomId = data.roomId;
         const room = this.rooms.get(roomId);
         if (!room) return;
 
-        room.messages = data.messages;
+        room.messages = data.messages || [];
         
         const container = document.getElementById(`messages-${roomId}`);
         const loadingEl = document.getElementById(`loading-${roomId}`);
@@ -395,14 +464,31 @@ const Chat = {
     },
 
     sendMessage(roomId) {
+        console.log('sendMessage called for room:', roomId);
         const input = document.getElementById(`input-${roomId}`);
-        if (!input) return;
+        if (!input) {
+            console.error('Input not found for room:', roomId);
+            return;
+        }
 
         const content = input.value.trim();
-        if (!content) return;
+        if (!content) {
+            console.log('Empty message, ignoring');
+            return;
+        }
 
+        // Ensure socket is ready
         if (!this.ensureSocket()) {
-            console.error('Cannot send message: socket not connected');
+            console.warn('Socket not ready, queuing message');
+            this.queueMessage(roomId, content);
+            UI.showToast('Connecting to chat...', 'info');
+            return;
+        }
+
+        if (!this.socket.connected) {
+            console.warn('Socket not connected, queuing message');
+            this.queueMessage(roomId, content);
+            UI.showToast('Reconnecting... message queued', 'info');
             return;
         }
 
@@ -420,12 +506,45 @@ const Chat = {
             replyTo: this.replyTo
         };
 
+        console.log('Emitting send-message:', messageData);
+        
+        // Clear input immediately for better UX
+        input.value = '';
+        this.cancelReply(roomId);
+
         this.socket.emit('send-message', messageData, (response) => {
-            if (response && response.success) {
-                input.value = '';
-                this.cancelReply(roomId);
+            console.log('Send message callback:', response);
+            if (!response || !response.success) {
+                console.error('Message send failed:', response);
+                input.value = content;
+                UI.showToast('Failed to send. Retrying...', 'error');
             }
         });
+    },
+
+    queueMessage(roomId, content) {
+        this.messageQueue.push({ roomId, content, replyTo: this.replyTo, timestamp: Date.now() });
+    },
+
+    flushMessageQueue() {
+        console.log('Flushing message queue, items:', this.messageQueue.length);
+        while (this.messageQueue.length > 0) {
+            const msg = this.messageQueue.shift();
+            if (Date.now() - msg.timestamp < 30000) {
+                const user = this.currentUser || { username: 'Guest', _id: null, avatar: '' };
+                this.socket.emit('send-message', {
+                    roomId: msg.roomId,
+                    type: msg.roomId === 'global' ? 'global' : 'match',
+                    content: msg.content,
+                    user: {
+                        username: user.username,
+                        userId: user._id,
+                        avatar: user.avatar || ''
+                    },
+                    replyTo: msg.replyTo
+                });
+            }
+        }
     },
 
     handleInputKeydown(event, roomId) {
@@ -436,9 +555,6 @@ const Chat = {
     },
 
     handleInput(roomId) {
-        const input = document.getElementById(`input-${roomId}`);
-        if (!input) return;
-
         const user = this.currentUser;
         if (!user || !this.ensureSocket()) return;
 
@@ -513,7 +629,10 @@ const Chat = {
         const message = room.messages.find(m => m._id === messageId);
         if (!message) return;
 
-        if (!this.ensureSocket()) return;
+        if (!this.ensureSocket()) {
+            UI.showToast('Not connected', 'error');
+            return;
+        }
 
         const hasReacted = message.reactions?.some(r => 
             r.userId === this.currentUser?._id && r.emoji === emoji
@@ -613,7 +732,10 @@ const Chat = {
     deleteMessage(messageId, roomId) {
         if (!confirm('Delete this message?')) return;
         
-        if (!this.ensureSocket()) return;
+        if (!this.ensureSocket()) {
+            UI.showToast('Not connected', 'error');
+            return;
+        }
         
         this.socket.emit('delete-message', {
             messageId,

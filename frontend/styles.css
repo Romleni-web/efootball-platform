@@ -3865,3 +3865,30 @@ body {
         height: 36px;
     }
 }
+
+/* Connection status bar */
+.wa-connection-status {
+    background: var(--warning-light);
+    color: var(--warning);
+    padding: var(--space-2) var(--space-4);
+    font-size: 0.75rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.wa-conn-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--warning);
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
