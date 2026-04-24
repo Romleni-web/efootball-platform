@@ -28,7 +28,7 @@ app.use(helmet({
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"],
             "img-src": ["'self'", "data:", "res.cloudinary.com", "*.cloudinary.com"],
-            "connect-src": ["'self'", "https://efootball-platform.onrender.com"]
+            "connect-src": ["'self'", "https://efootball-platform.onrender.com", "https://fonts.googleapis.com"]
         },
     },
 }));

@@ -9,6 +9,8 @@ const STATIC_ASSETS = [
     '/js/app.js',
     '/js/chat.js',
     '/manifest.json',
+    '/icons/icon-72x72.png',   
+    '/icons/icon-144x144.png',
     '/icons/icon-192x192.png',
     '/icons/icon-512x512.png'
 ];
@@ -56,10 +58,15 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             }).catch(() => {
-                // Fallback for HTML pages
+                // ✅ FIX: Always return a Response
                 if (request.destination === 'document') {
                     return caches.match('/index.html');
                 }
+                // Return a generic error response for other failed requests
+                return new Response('Network error', { 
+                    status: 408, 
+                    headers: { 'Content-Type': 'text/plain' } 
+                });
             });
         })
     );
