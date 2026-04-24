@@ -1,3 +1,4 @@
+// models/Message.js - this is SEPARATE from routes/chat.js
 const mongoose = require('mongoose');
 
 const reactionSchema = new mongoose.Schema({
@@ -32,7 +33,6 @@ const messageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient querying
 messageSchema.index({ roomId: 1, createdAt: -1 });
 messageSchema.index({ roomId: 1, type: 1, createdAt: -1 });
 

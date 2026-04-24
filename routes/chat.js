@@ -49,10 +49,7 @@ router.post('/reaction', auth, async (req, res) => {
             return res.status(404).json({ message: 'Message not found' });
         }
 
-        // Remove existing reaction from this user
         message.reactions = message.reactions.filter(r => r.userId.toString() !== userId.toString());
-
-        // Add new reaction
         message.reactions.push({ emoji, userId, username });
         await message.save();
 
@@ -132,4 +129,5 @@ router.delete('/message/:messageId', auth, async (req, res) => {
     }
 });
 
+// THIS MUST BE THE LAST LINE - export the router, NOT the model
 module.exports = router;
