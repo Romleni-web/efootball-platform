@@ -590,7 +590,7 @@ body {
 }
 
 /* Small mobile: 2 on top, 1 centered below */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .player-showcase {
         padding: var(--space-5) 0;
     }
