@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const webpush = require('web-push');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const User = require('../models/User');
 
 // Configure VAPID keys (generate these once and store in .env)
