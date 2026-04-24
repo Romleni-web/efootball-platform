@@ -1,4 +1,6 @@
+const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
+const User = require('../models/User');
 
 class TournamentLogic {
     constructor(tournament) {
