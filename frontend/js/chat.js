@@ -88,7 +88,7 @@ const Chat = {
             console.error('Chat: socket error:', err.message);
         });
 
-        this.socket.on('new-message', (data) => {
+        this.socket.off('new-message').on('new-message', (data) => {
             console.log('Received new message:', data);
             this.handleNewMessage(data);
         });
@@ -287,43 +287,46 @@ const Chat = {
 
     attachListeners(roomId) {
         console.log('Attaching listeners for room:', roomId);
-        const input = document.getElementById(`input-${roomId}`);
-        const messagesContainer = document.getElementById(`messages-${roomId}`);
         
-        if (!input || !messagesContainer) {
-            console.error('Could not find input or messages container');
-            return;
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        
+        containers.forEach(messagesContainer => {
+            messagesContainer.addEventListener('scroll', () => {
+                const room = this.rooms.get(roomId);
+                if (!room) return;
+                
+                const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 50;
+                room.isAtBottom = isAtBottom;
+                
+                const prefix = messagesContainer.id.startsWith('app-') ? 'app-' : '';
+                const scrollBtn = document.getElementById(`${prefix}scroll-btn-${roomId}`);
+                if (scrollBtn) {
+                    scrollBtn.style.display = isAtBottom ? 'none' : 'flex';
+                }
+            });
+        });
+
+        if (!window._chatGlobalClickAttached) {
+            document.addEventListener('click', (e) => {
+                const pickers = document.querySelectorAll('.wa-emoji-picker');
+                pickers.forEach(picker => {
+                    const btn = e.target.closest('.wa-input-btn, .chat-app-input-btn');
+                    if (picker.style.display !== 'none' && !picker.contains(e.target) && !btn) {
+                        picker.style.display = 'none';
+                    }
+                });
+            });
+            window._chatGlobalClickAttached = true;
         }
 
-        messagesContainer.addEventListener('scroll', () => {
-            const room = this.rooms.get(roomId);
-            if (!room) return;
-            
-            const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 50;
-            room.isAtBottom = isAtBottom;
-            
-            const scrollBtn = document.getElementById(`scroll-btn-${roomId}`);
-            if (scrollBtn) {
-                scrollBtn.style.display = isAtBottom ? 'none' : 'flex';
-            }
-        });
-
-        document.addEventListener('click', (e) => {
-            const picker = document.getElementById(`emoji-picker-${roomId}`);
-            const btn = e.target.closest('.wa-input-btn');
-            if (picker && !picker.contains(e.target) && (!btn || !btn.onclick?.toString().includes('toggleEmojiPicker'))) {
-                picker.style.display = 'none';
-            }
-        });
-
-        setTimeout(() => input.focus(), 100);
+        const input = document.getElementById(`input-${roomId}`) || document.getElementById(`app-input-${roomId}`);
+        if (input) setTimeout(() => input.focus(), 100);
     },
 
     updateConnectionStatus(roomId, isConnected) {
-        const statusEl = document.getElementById(`conn-status-${roomId}`);
-        if (statusEl) {
-            statusEl.style.display = isConnected ? 'none' : 'flex';
-        }
+        const elements = document.querySelectorAll(`#conn-status-${roomId}, #app-conn-status-${roomId}`);
+        elements.forEach(el => el.style.display = isConnected ? 'none' : 'flex');
+        
         const headerStatus = document.getElementById(`status-${roomId}`);
         if (headerStatus && isConnected) {
             headerStatus.querySelector('.wa-status-text').textContent = 'connected';
@@ -342,10 +345,12 @@ const Chat = {
         room.messages.push(data);
         this.renderMessage(data, roomId);
         
-        const messagesContainer = document.getElementById(`messages-${roomId}`);
-        if (messagesContainer && room.isAtBottom) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        containers.forEach(container => {
+            if (room.isAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
 
         if (this.currentRoom === roomId && room.isAtBottom) {
             this.markAsRead([data._id], roomId);
@@ -422,13 +427,15 @@ const Chat = {
             </div>
         `;
 
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = messageHtml;
-        container.appendChild(tempDiv.firstElementChild);
+        containers.forEach(container => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = messageHtml;
+            container.appendChild(tempDiv.firstElementChild);
 
-        if (!isHistory) {
-            container.scrollTop = container.scrollHeight;
-        }
+            if (!isHistory) {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
     },
 
     renderReplyPreview(replyTo) {
@@ -465,11 +472,8 @@ const Chat = {
 
     sendMessage(roomId) {
         console.log('sendMessage called for room:', roomId);
-        const input = document.getElementById(`input-${roomId}`);
-        if (!input) {
-            console.error('Input not found for room:', roomId);
-            return;
-        }
+        const input = document.getElementById(`input-${roomId}`) || document.getElementById(`app-input-${roomId}`);
+        if (!input) return;
 
         const content = input.value.trim();
         if (!content) {
@@ -570,23 +574,24 @@ const Chat = {
         const room = this.rooms.get(roomId);
         if (!room) return;
 
-        const typingEl = document.getElementById(`typing-${roomId}`);
-        if (!typingEl) return;
+        const indicators = document.querySelectorAll(`#typing-${roomId}, #app-typing-${roomId}`);
 
-        if (data.isTyping) {
-            room.typingUsers.add(data.userId);
-            typingEl.style.display = 'flex';
-            typingEl.querySelector('.wa-typing-text').textContent = 
-                room.typingUsers.size === 1 ? `${data.username} is typing...` : `${room.typingUsers.size} people are typing...`;
-        } else {
-            room.typingUsers.delete(data.userId);
-            if (room.typingUsers.size === 0) {
-                typingEl.style.display = 'none';
-            } else {
+        indicators.forEach(typingEl => {
+            if (data.isTyping) {
+                room.typingUsers.add(data.userId);
+                typingEl.style.display = 'flex';
                 typingEl.querySelector('.wa-typing-text').textContent = 
-                    `${room.typingUsers.size} people are typing...`;
+                    room.typingUsers.size === 1 ? `${data.username} is typing...` : `${room.typingUsers.size} people are typing...`;
+            } else {
+                room.typingUsers.delete(data.userId);
+                if (room.typingUsers.size === 0) {
+                    typingEl.style.display = 'none';
+                } else {
+                    typingEl.querySelector('.wa-typing-text').textContent = 
+                        `${room.typingUsers.size} people are typing...`;
+                }
             }
-        }
+        });
     },
 
     setReply(messageId, roomId) {
@@ -602,24 +607,24 @@ const Chat = {
             username: message.sender?.username
         };
 
-        const preview = document.getElementById(`reply-preview-${roomId}`);
-        const usernameEl = document.getElementById(`reply-username-${roomId}`);
-        const textEl = document.getElementById(`reply-text-${roomId}`);
-
-        if (preview && usernameEl && textEl) {
-            usernameEl.textContent = message.sender?.username || 'Unknown';
-            textEl.textContent = message.content.substring(0, 100);
-            preview.style.display = 'flex';
-        }
+        const previews = document.querySelectorAll(`#reply-preview-${roomId}, #app-reply-preview-${roomId}`);
+        previews.forEach(p => {
+            const prefix = p.id.startsWith('app-') ? 'app-' : '';
+            const uEl = document.getElementById(`${prefix}reply-username-${roomId}`);
+            const tEl = document.getElementById(`${prefix}reply-text-${roomId}`);
+            if (uEl) uEl.textContent = message.sender?.username || 'Unknown';
+            if (tEl) tEl.textContent = message.content.substring(0, 100);
+            p.style.display = 'flex';
+        });
 
         this.hideMessageMenu(messageId);
-        document.getElementById(`input-${roomId}`)?.focus();
+        (document.getElementById(`input-${roomId}`) || document.getElementById(`app-input-${roomId}`))?.focus();
     },
 
     cancelReply(roomId) {
         this.replyTo = null;
-        const preview = document.getElementById(`reply-preview-${roomId}`);
-        if (preview) preview.style.display = 'none';
+        const previews = document.querySelectorAll(`#reply-preview-${roomId}, #app-reply-preview-${roomId}`);
+        previews.forEach(p => p.style.display = 'none');
     },
 
     toggleReaction(messageId, emoji, roomId) {
@@ -782,19 +787,19 @@ const Chat = {
     },
 
     toggleEmojiPicker(roomId) {
-        const picker = document.getElementById(`emoji-picker-${roomId}`);
-        if (picker) {
-            picker.style.display = picker.style.display === 'none' ? 'grid' : 'none';
-        }
+        const pickers = document.querySelectorAll(`#emoji-picker-${roomId}, #app-emoji-picker-${roomId}`);
+        pickers.forEach(p => {
+            p.style.display = p.style.display === 'none' ? 'grid' : 'none';
+        });
     },
 
     insertEmoji(roomId, emoji) {
-        const input = document.getElementById(`input-${roomId}`);
+        const input = document.getElementById(`input-${roomId}`) || document.getElementById(`app-input-${roomId}`);
         if (input) {
             input.value += emoji;
             input.focus();
         }
-        this.toggleEmojiPicker(roomId);
+        // Don't auto-close if user might want multiple emojis
     },
 
     toggleUsersList(roomId) {
@@ -817,10 +822,8 @@ const Chat = {
     },
 
     updateOnlineUsers(roomId, users) {
-        const listEl = document.getElementById(`users-list-${roomId}`);
-        if (!listEl) return;
-
-        listEl.innerHTML = users.map(u => `
+        const lists = document.querySelectorAll(`#users-list-${roomId}, #app-users-list-${roomId}`);
+        const html = users.map(u => `
             <div class="wa-user-item">
                 <div class="wa-user-avatar">${this.getInitials(u.username)}</div>
                 <span class="wa-user-name">${this.escapeHtml(u.username)}</span>
@@ -830,23 +833,23 @@ const Chat = {
     },
 
     showSystemMessage(roomId, text) {
-        const container = document.getElementById(`messages-${roomId}`);
-        if (!container) return;
-
-        const div = document.createElement('div');
-        div.className = 'wa-system-message';
-        div.textContent = text;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        containers.forEach(container => {
+            const div = document.createElement('div');
+            div.className = 'wa-system-message';
+            div.textContent = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        });
     },
 
     scrollToBottom(roomId) {
-        const container = document.getElementById(`messages-${roomId}`);
-        if (container) {
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        containers.forEach(container => {
             container.scrollTop = container.scrollHeight;
-            const room = this.rooms.get(roomId);
-            if (room) room.isAtBottom = true;
-        }
+        });
+        const room = this.rooms.get(roomId);
+        if (room) room.isAtBottom = true;
     },
 
     getReadStatus(message, isMe) {
