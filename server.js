@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const logger = require('./utils/logger')('Server');
 
 // Security middleware FIRST
 const corsOptions = {
@@ -38,9 +39,9 @@ const originalPost = express.Router.prototype.post;
 express.Router.prototype.post = function(path, ...handlers) {
     handlers.forEach((handler, i) => {
         if (typeof handler !== 'function') {
-            console.error(`Invalid handler at position ${i} for POST ${path}`);
-            console.error('   Type:', typeof handler);
-            console.error('   Value:', handler);
+            logger.error(`Invalid handler at position ${i} for POST ${path}`);
+            logger.error('   Type:', typeof handler);
+            logger.error('   Value:', handler);
         }
     });
     return originalPost.call(this, path, ...handlers);
@@ -50,7 +51,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    logger.info(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
 
@@ -76,9 +77,9 @@ const routes = [
 for (const route of routes) {
     try {
         app.use(route.path, require(route.module));
-        console.log(`Loaded route: ${route.path}`);
+        logger.info(`Loaded route: ${route.path}`);
     } catch (err) {
-        console.error(`Failed to load ${route.path}:`, err.message);
+        logger.error(`Failed to load ${route.path}:`, err.message);
         process.exit(1);
     }
 }
@@ -90,7 +91,7 @@ app.get('*', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
+    logger.error('Error:', err.stack);
     res.status(err.status || 500).json({ 
         message: process.env.NODE_ENV === 'production' 
             ? 'Something went wrong!' 
@@ -103,7 +104,7 @@ const PORT = process.env.PORT || 10000;
 const requiredEnv = ['MONGODB_URI', 'JWT_SECRET'];
 const missing = requiredEnv.filter(e => !process.env[e]);
 if (missing.length > 0) {
-    console.error('Missing required env vars:', missing.join(', '));
+    logger.error('Missing required env vars:', missing.join(', '));
     process.exit(1);
 }
 
@@ -154,7 +155,7 @@ function broadcastToRoom(roomId, event, data, excludeSocket = null) {
 }
 
 io.on('connection', (socket) => {
-    console.log('Socket connected:', socket.id);
+    logger.info('Socket connected:', socket.id);
 
     socket.on('join-room', async (data) => {
         try {
@@ -192,7 +193,7 @@ io.on('connection', (socket) => {
             });
 
         } catch (error) {
-            console.error('Join room error:', error);
+            logger.error('Join room error:', error);
         }
     });
 
@@ -233,7 +234,7 @@ io.on('connection', (socket) => {
                 callback({ success: true, messageId: message._id.toString() });
             }
         } catch (error) {
-            console.error('Send message error:', error);
+            logger.error('Send message error:', error);
             if (typeof callback === 'function') {
                 callback({ success: false, error: 'Failed to send message' });
             }
@@ -315,7 +316,7 @@ io.on('connection', (socket) => {
                 emoji
             });
         } catch (error) {
-            console.error('Add reaction error:', error);
+            logger.error('Add reaction error:', error);
         }
     });
 
@@ -337,7 +338,7 @@ io.on('connection', (socket) => {
                 removed: true
             });
         } catch (error) {
-            console.error('Remove reaction error:', error);
+            logger.error('Remove reaction error:', error);
         }
     });
 
@@ -364,7 +365,7 @@ io.on('connection', (socket) => {
                 username
             }, socket);
         } catch (error) {
-            console.error('Mark read error:', error);
+            logger.error('Mark read error:', error);
         }
     });
 
@@ -384,7 +385,7 @@ io.on('connection', (socket) => {
                 messageId
             });
         } catch (error) {
-            console.error('Delete message error:', error);
+            logger.error('Delete message error:', error);
         }
     });
 
@@ -413,36 +414,36 @@ mongoose.connect(process.env.MONGODB_URI, {
     socketTimeoutMS: 45000,
 })
 .then(async () => {
-    console.log('MongoDB Connected');
+    logger.info('MongoDB Connected');
     
     try {
         await mongoose.connection.collection('users').dropIndex('efootballId_1');
-        console.log('Dropped old efootballId index');
+        logger.info('Dropped old efootballId index');
     } catch (err) {
         if (err.code === 27) {
-            console.log('efootballId_1 index already clean or does not exist');
+            logger.info('efootballId_1 index already clean or does not exist');
         } else {
-            console.error('Index drop error:', err.message);
+            logger.error('Index drop error:', err.message);
         }
     }
     
     mongoose.connection.on('error', (err) => {
-        console.error('MongoDB error:', err);
+        logger.error('MongoDB error:', err);
     });
     mongoose.connection.on('disconnected', () => {
-        console.warn('MongoDB disconnected');
+        logger.warn('MongoDB disconnected');
     });
     
     server.listen(PORT, '0.0.0.0', () => {
-        console.log(`Server running on port ${PORT}`);
+        logger.info(`Server running on port ${PORT}`);
     });
 })
 .catch(err => {
-    console.error('MongoDB Connection Failed:', err.message);
+    logger.error('MongoDB Connection Failed:', err.message);
     process.exit(1);
 });
 
 process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
+    logger.error('Unhandled Rejection:', err);
     process.exit(1);
 });

@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { sendResetEmail } = require('../services/emailService');
+const logger = require('../utils/logger')('AuthRoute');
 
 // Generate JWT
 const generateToken = (userId) => {
@@ -59,7 +60,7 @@ router.post('/register', [
             }
         });
     } catch (error) {
-        console.error('Registration error:', error);
+        logger.error('Registration error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -104,7 +105,7 @@ router.post('/login', [
             }
         });
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -142,7 +143,7 @@ router.post('/forgot-password', [
         try {
             await sendResetEmail(user.email, resetLink);
         } catch (mailError) {
-            console.error('Email sending failed:', mailError);
+            logger.error('Email sending failed:', mailError);
             // We still return success to the client to avoid enumeration
         }
 
@@ -151,7 +152,7 @@ router.post('/forgot-password', [
             ...(process.env.NODE_ENV !== 'production' && { debugLink: resetLink })
         });
     } catch (error) {
-        console.error('Forgot password error:', error);
+        logger.error('Forgot password error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -186,7 +187,7 @@ router.post('/reset-password', [
 
         res.json({ message: 'Password reset successful. You can now log in.' });
     } catch (error) {
-        console.error('Reset password error:', error);
+        logger.error('Reset password error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

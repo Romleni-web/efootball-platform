@@ -3,6 +3,7 @@ const router = express.Router();
 const webpush = require('web-push');
 const { auth } = require('../middleware/auth');
 const User = require('../models/User');
+const logger = require('../utils/logger')('NotificationsRoute');
 
 // Configure VAPID keys (generate these once and store in .env)
 // Run: npx web-push generate-vapid-keys
@@ -37,7 +38,7 @@ router.post('/subscribe', auth, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Subscribe error:', error);
+        logger.error('Subscribe error:', error);
         res.status(500).json({ message: 'Failed to save subscription' });
     }
 });
@@ -56,7 +57,7 @@ router.post('/unsubscribe', auth, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Unsubscribe error:', error);
+        logger.error('Unsubscribe error:', error);
         res.status(500).json({ message: 'Failed to remove subscription' });
     }
 });
@@ -90,7 +91,7 @@ router.post('/send', auth, async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Send notification error:', error);
+        logger.error('Send notification error:', error);
         res.status(500).json({ message: 'Failed to send notification' });
     }
 });
@@ -134,7 +135,7 @@ router.post('/broadcast', auth, async (req, res) => {
 
         res.json({ success: true, sent, failed, total: users.length });
     } catch (error) {
-        console.error('Broadcast error:', error);
+        logger.error('Broadcast error:', error);
         res.status(500).json({ message: 'Failed to broadcast' });
     }
 });

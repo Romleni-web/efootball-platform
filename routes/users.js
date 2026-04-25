@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger')('UsersRoute');
 
 // Middleware to verify token
 const auth = async (req, res, next) => {
@@ -76,7 +77,7 @@ router.get('/matches/upcoming', auth, async (req, res) => {
 
         res.json(formattedMatches);
     } catch (error) {
-        console.error('Upcoming matches error:', error);
+        logger.error('Upcoming matches error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -246,7 +247,7 @@ router.get('/leaderboard', async (req, res) => {
 
         res.json(leaderboard);
     } catch (error) {
-        console.error('Leaderboard error:', error);
+        logger.error('Leaderboard error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

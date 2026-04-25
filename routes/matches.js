@@ -7,6 +7,7 @@ const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
+const logger = require('../utils/logger')('MatchesRoute');
 
 // POST /api/matches/:id/result - Dual submission system
 router.post('/:id/result', auth, upload.fields([
@@ -17,7 +18,7 @@ router.post('/:id/result', auth, upload.fields([
         const { score1, score2, winner, notes } = req.body;
         const userId = req.user._id.toString();
 
-        console.log('Received submission:', { score1, score2, winner, userId });
+        logger.debug('Received submission:', { score1, score2, winner, userId });
 
         let match = await Match.findById(req.params.id)
             .populate('tournament', 'name format')
@@ -30,13 +31,13 @@ router.post('/:id/result', auth, upload.fields([
         const matchPlayer1Id = match.player1?._id?.toString();
         const matchPlayer2Id = match.player2?._id?.toString();
         
-        console.log('Player IDs:', { matchPlayer1Id, matchPlayer2Id, currentUser: userId });
+        logger.debug('Player IDs:', { matchPlayer1Id, matchPlayer2Id, currentUser: userId });
 
         const isPlayer1 = matchPlayer1Id === userId;
         const isPlayer2 = matchPlayer2Id === userId;
 
         if (!isPlayer1 && !isPlayer2) {
-            console.log('User not participant:', userId);
+            logger.info('User not participant:', userId);
             return res.status(403).json({ message: 'You are not a participant in this match' });
         }
 
@@ -74,7 +75,7 @@ router.post('/:id/result', auth, upload.fields([
             submittedBy: req.user._id
         };
 
-        console.log('Saving submission for', playerKey);
+        logger.info('Saving submission for', playerKey);
 
         // Save submission
         await Match.findByIdAndUpdate(req.params.id, {
@@ -93,8 +94,8 @@ router.post('/:id/result', auth, upload.fields([
         const bothSubmitted = match.submissions?.player1?.submittedAt && match.submissions?.player2?.submittedAt;
         const submissionsMatch = bothSubmitted ? match.submissionsMatch() : false;
 
-        console.log('Both submitted:', bothSubmitted);
-        console.log('Submissions match:', submissionsMatch);
+        logger.debug('Both submitted:', bothSubmitted);
+        logger.debug('Submissions match:', submissionsMatch);
 
         if (bothSubmitted && submissionsMatch) {
             // Calculate winner ID from submission
@@ -102,7 +103,7 @@ router.post('/:id/result', auth, upload.fields([
                 ? match.player1._id 
                 : match.player2._id;
 
-            console.log('Auto-approving match. Winner ID:', winnerId.toString());
+            logger.info('Auto-approving match. Winner ID:', winnerId.toString());
 
             // Update match as completed
             await Match.findByIdAndUpdate(req.params.id, {
@@ -125,7 +126,7 @@ router.post('/:id/result', auth, upload.fields([
                 .populate('player2')
                 .populate('winner');
 
-            console.log('Completed match:', {
+            logger.debug('Completed match:', {
                 id: completedMatch._id.toString(),
                 player1: completedMatch.player1?._id?.toString(),
                 player2: completedMatch.player2?._id?.toString(),
@@ -147,20 +148,20 @@ router.post('/:id/result', auth, upload.fields([
                 
                 const logic = TournamentLogicFactory.create(tournamentForLogic);
                 
-                console.log('Advancing winner...');
+                logger.info('Advancing winner...');
                 const nextMatch = await logic.advanceWinner(completedMatch);
-                console.log('Next match result:', nextMatch ? nextMatch._id.toString() : 'null');
+                logger.info('Next match result:', nextMatch ? nextMatch._id.toString() : 'null');
                 
                 // For double elimination, also advance loser
                 if (tournament.format === 'double_elimination' && logic.advanceLoser) {
-                    console.log('Advancing loser (double elimination)...');
+                    logger.info('Advancing loser (double elimination)...');
                     const loserMatch = await logic.advanceLoser(completedMatch);
-                    console.log('Loser match result:', loserMatch ? loserMatch._id.toString() : 'null');
+                    logger.info('Loser match result:', loserMatch ? loserMatch._id.toString() : 'null');
                 }
                 
                 // Check if tournament complete
                 if (logic.isTournamentComplete && logic.isTournamentComplete()) {
-                    console.log('Tournament complete!');
+                    logger.info('Tournament complete!');
                     tournament.status = 'finished';
                     const rankings = logic.getFinalRankings(allMatches);
                     tournament.winners = rankings.map((r, i) => ({
@@ -211,7 +212,7 @@ if (io) { const { emitBracketUpdate } = require('../socket/bracketEvents'); emit
         });
 
     } catch (error) {
-        console.error('Submit result error:', error);
+        logger.error('Submit result error:', error);
         res.status(500).json({ message: 'Server error: ' + error.message });
     }
 });
@@ -287,7 +288,7 @@ async function updatePlayerStats(match) {
             await player2.save();
         }
     } catch (err) {
-        console.error('Update stats error:', err);
+        logger.error('Update stats error:', err);
     }
 }
 

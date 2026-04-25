@@ -3892,3 +3892,367 @@ body {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+/* ============================================
+   CHAT TOGGLE BUTTON (Navbar)
+   ============================================ */
+
+.chat-toggle-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    border: none;
+    color: var(--gray-600);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    margin-left: var(--space-2);
+}
+
+.chat-toggle-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.chat-toggle-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.chat-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.625rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+/* ============================================
+   FULL-SCREEN CHAT APP OVERLAY
+   ============================================ */
+
+.chat-app-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--light);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-app-overlay.active {
+    transform: translateY(0);
+}
+
+.chat-app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+/* App Header */
+.chat-app-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--light);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    height: 60px;
+}
+
+.chat-app-back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--gray-600);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.chat-app-back:hover {
+    background: var(--gray-100);
+    color: var(--dark);
+}
+
+.chat-app-title {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.chat-app-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.chat-app-info {
+    min-width: 0;
+}
+
+.chat-app-info h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-app-subtitle {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.chat-app-actions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.chat-app-action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--gray-500);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.chat-app-action-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+/* Messages Area */
+.chat-app-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Input Area */
+.chat-app-input-area {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--light);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+}
+
+.chat-app-input-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--gray-500);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.chat-app-input-btn:hover {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.chat-app-input-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.chat-app-message-input {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--gray-50);
+    color: var(--gray-800);
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.chat-app-message-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    background: var(--light);
+}
+
+.chat-app-message-input::placeholder {
+    color: var(--gray-400);
+}
+
+.chat-app-send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.chat-app-send-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.chat-app-send-btn:active {
+    transform: scale(0.95);
+}
+
+/* Users Panel in App Mode */
+.chat-app-users-panel {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    width: 280px;
+    max-width: 80vw;
+    height: calc(100% - 60px);
+    background: var(--light);
+    border-left: 1px solid var(--border);
+    z-index: 10;
+    overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+    animation: slideInRight 0.2s ease;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+/* Desktop: Centered modal-like look */
+@media (min-width: 1024px) {
+    .chat-app-overlay {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: scale(0.95);
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .chat-app-overlay.active {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    .chat-app-container {
+        width: 900px;
+        max-width: 95vw;
+        height: 85vh;
+        height: 85dvh;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        overflow: hidden;
+    }
+
+    .chat-app-header {
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .chat-app-input-area {
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+    .chat-app-header {
+        padding: var(--space-2) var(--space-3);
+        height: 56px;
+    }
+
+    .chat-app-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.75rem;
+    }
+
+    .chat-app-info h3 {
+        font-size: 0.9375rem;
+    }
+
+    .chat-app-messages {
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .chat-app-input-area {
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .chat-app-message-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .chat-app-send-btn {
+        width: 44px;
+        height: 44px;
+    }
+}

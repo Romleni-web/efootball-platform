@@ -1,6 +1,7 @@
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const { TournamentLogicFactory } = require('./tournamentLogic');
+const logger = require('../utils/logger')('AdminService');
 
 /**
  * Resolve a match result and handle tournament advancement.
@@ -80,7 +81,7 @@ const syncTournamentBracket = async (tournamentId) => {
     const matches = await Match.find({ tournament: tournamentId });
     const logic = TournamentLogicFactory.create(tournament);
 
-    console.log(`Syncing bracket for: ${tournament.name}`);
+    logger.info(`Syncing bracket for: ${tournament.name}`);
     
     // Check if we're in dynamic mode (single elimination with reseeding enabled)
     const isDynamic = tournament.format === 'single_elimination' && 
@@ -106,7 +107,7 @@ const syncTournamentBracket = async (tournamentId) => {
                 if (allCompleted) {
                     const winners = roundMatches.filter(m => m.winner).map(m => m.winner);
                     if (winners.length > 1) {
-                        console.log(`Generating round ${lastCompletedRound + 1} from sync...`);
+                        logger.info(`Generating round ${lastCompletedRound + 1} from sync...`);
                         const nextMatches = await logic.generateNextRound(lastCompletedRound + 1, winners);
                         const saved = await Match.insertMany(nextMatches);
                         tournament.matches.push(...saved.map(m => m._id));

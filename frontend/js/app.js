@@ -302,11 +302,6 @@ const Pages = {
                 </div>
             </section>
 
-            <section class="global-chat-section">
-                <h2>Community Chat</h2>
-                ${ChatUI.render('global')}
-            </section>
-
             <!-- Player Cards Showcase - Only on Home -->
             <section class="player-showcase" aria-label="Featured players">
                 <h2>Featured Players</h2>
@@ -1606,6 +1601,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await Auth.init();
+
+    if (window.ChatApp) {
+        ChatApp.init();
+    }
+    
     wireLegacyInlineHandlers(document);
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
