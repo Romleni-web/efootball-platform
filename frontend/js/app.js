@@ -372,8 +372,7 @@ const Pages = {
             </section>
         `;
 
-        // Initialize chat after content is in DOM
-        ChatUI.attachListeners('global');
+        // Chat is accessed via nav bar button only
     },
 
     login() {

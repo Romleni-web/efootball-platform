@@ -4,14 +4,12 @@ const ChatApp = {
     unreadCount: 0,
 
     init() {
-        // Show chat button if user is logged in
         const user = Auth.getUser();
         const btn = document.getElementById('chatToggleBtn');
         if (btn) {
             btn.style.display = user ? 'flex' : 'none';
         }
 
-        // Listen for auth changes
         window.addEventListener('storage', () => {
             const user = Auth.getUser();
             if (btn) btn.style.display = user ? 'flex' : 'none';
@@ -29,8 +27,7 @@ const ChatApp = {
     open(roomId = 'global') {
         this.isOpen = true;
         this.currentRoom = roomId;
-        
-        // Create overlay if not exists
+
         let overlay = document.getElementById('chatAppOverlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -39,52 +36,45 @@ const ChatApp = {
             document.body.appendChild(overlay);
         }
 
-        // Render full-screen chat
         overlay.innerHTML = this.render();
         overlay.classList.add('active');
 
-        // Prevent body scroll
         document.body.style.overflow = 'hidden';
 
-        // Initialize chat module
         if (window.Chat) {
             Chat.joinRoom(roomId, 'Community Chat');
             Chat.attachListeners(roomId);
         }
 
-        // Update button state
         const btn = document.getElementById('chatToggleBtn');
         if (btn) btn.classList.add('active');
     },
 
     close() {
         this.isOpen = false;
-        
+
         const overlay = document.getElementById('chatAppOverlay');
         if (overlay) {
             overlay.classList.remove('active');
             setTimeout(() => overlay.remove(), 300);
         }
 
-        // Restore body scroll
         document.body.style.overflow = '';
 
-        // Update button state
         const btn = document.getElementById('chatToggleBtn');
         if (btn) btn.classList.remove('active');
     },
 
     render() {
         const roomId = this.currentRoom;
-        
+
         return `
             <div class="chat-app-container">
-                <!-- App Header -->
                 <div class="chat-app-header">
                     <button class="chat-app-back" onclick="ChatApp.close()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     </button>
-                    
+
                     <div class="chat-app-title">
                         <div class="chat-app-avatar">${Chat.getInitials ? Chat.getInitials('Community') : 'C'}</div>
                         <div class="chat-app-info">
@@ -92,7 +82,7 @@ const ChatApp = {
                             <span class="chat-app-subtitle" id="chat-app-status">connecting...</span>
                         </div>
                     </div>
-                    
+
                     <div class="chat-app-actions">
                         <button class="chat-app-action-btn" onclick="Chat.toggleUsersList('${roomId}')" title="Members">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -103,7 +93,6 @@ const ChatApp = {
                     </div>
                 </div>
 
-                <!-- Users Panel -->
                 <div class="chat-app-users-panel" id="users-panel-${roomId}" style="display:none;">
                     <div class="wa-users-header">
                         <span>Online Users</span>
@@ -114,7 +103,6 @@ const ChatApp = {
                     <div class="wa-users-list" id="users-list-${roomId}"></div>
                 </div>
 
-                <!-- Messages Area -->
                 <div class="chat-app-messages" id="messages-${roomId}">
                     <div class="wa-loading-messages" id="loading-${roomId}">
                         <div class="wa-spinner-small"></div>
@@ -122,18 +110,15 @@ const ChatApp = {
                     </div>
                 </div>
 
-                <!-- Scroll to Bottom -->
                 <button class="wa-scroll-bottom" id="scroll-btn-${roomId}" onclick="Chat.scrollToBottom('${roomId}')" style="display:none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
                 </button>
 
-                <!-- Typing Indicator -->
                 <div class="wa-typing-indicator" id="typing-${roomId}" style="display:none;">
                     <div class="wa-typing-bubbles"><span></span><span></span><span></span></div>
                     <span class="wa-typing-text">someone is typing</span>
                 </div>
 
-                <!-- Reply Preview -->
                 <div class="wa-reply-preview" id="reply-preview-${roomId}" style="display:none;">
                     <div class="wa-reply-content">
                         <div class="wa-reply-username" id="reply-username-${roomId}"></div>
@@ -144,12 +129,11 @@ const ChatApp = {
                     </button>
                 </div>
 
-                <!-- Input Area -->
                 <div class="chat-app-input-area">
                     <button class="chat-app-input-btn" onclick="Chat.toggleEmojiPicker('${roomId}')" title="Emoji">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
                     </button>
-                    
+
                     <div class="wa-emoji-picker" id="emoji-picker-${roomId}" style="display:none;">
                         ${Chat.reactions ? Chat.reactions.map(emoji => `
                             <button class="wa-emoji-btn" onclick="Chat.insertEmoji('${roomId}', '${emoji}')">${emoji}</button>
@@ -167,7 +151,7 @@ const ChatApp = {
                             oninput="Chat.handleInput('${roomId}')"
                         >
                     </div>
-                    
+
                     <button class="chat-app-send-btn" onclick="Chat.sendMessage('${roomId}')">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
@@ -177,9 +161,6 @@ const ChatApp = {
     },
 
     showMenu() {
-        // Simple menu - can be expanded
-        const options = ['Mark all as read', 'Mute notifications', 'Clear chat'];
-        // Implement as needed
         console.log('Menu clicked');
     },
 
