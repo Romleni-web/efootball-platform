@@ -1,4 +1,4 @@
-// routes/matches.js - FIXED VERSION
+// routes/matches.js - COMPLETE FIXED VERSION
 const express = require('express');
 const router = express.Router();
 const Match = require('../models/Match');
@@ -8,6 +8,33 @@ const { auth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
 const logger = require('../utils/logger')('MatchesRoute');
+
+// Helper function to update player stats
+async function updatePlayerStats(match) {
+    try {
+        const winner = await User.findById(match.winner);
+        const player1 = await User.findById(match.player1);
+        const player2 = await User.findById(match.player2);
+
+        if (winner) {
+            winner.wins = (winner.wins || 0) + 1;
+            winner.points = (winner.points || 0) + 3;
+            await winner.save();
+        }
+
+        if (player1 && !player1._id.equals(match.winner)) {
+            player1.losses = (player1.losses || 0) + 1;
+            await player1.save();
+        }
+
+        if (player2 && !player2._id.equals(match.winner)) {
+            player2.losses = (player2.losses || 0) + 1;
+            await player2.save();
+        }
+    } catch (err) {
+        logger.error('Update stats error:', err);
+    }
+}
 
 // POST /api/matches/:id/result - Dual submission system
 router.post('/:id/result', auth, upload.fields([
@@ -175,7 +202,10 @@ router.post('/:id/result', auth, upload.fields([
                     await tournament.save();
 
                     const io = req.app.get('io');
-if (io) { const { emitBracketUpdate } = require('../socket/bracketEvents'); emitBracketUpdate(io, tournament._id); }
+                    if (io) { 
+                        const { emitBracketUpdate } = require('../socket/bracketEvents'); 
+                        emitBracketUpdate(io, tournament._id); 
+                    }
                 }
             }
 
@@ -265,32 +295,47 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// Helper function to update player stats
-async function updatePlayerStats(match) {
+// GET /api/matches/:id/share-card - Generate shareable match card
+router.get('/:id/share-card', async (req, res) => {
     try {
-        const winner = await User.findById(match.winner);
-        const player1 = await User.findById(match.player1);
-        const player2 = await User.findById(match.player2);
+        const match = await Match.findById(req.params.id)
+            .populate('player1', 'username')
+            .populate('player2', 'username')
+            .populate('winner', 'username')
+            .populate('tournament', 'name');
 
-        if (winner) {
-            winner.wins = (winner.wins || 0) + 1;
-            winner.points = (winner.points || 0) + 3;
-            await winner.save();
+        if (!match) {
+            return res.status(404).json({ message: 'Match not found' });
         }
 
-        if (player1 && !player1._id.equals(match.winner)) {
-            player1.losses = (player1.losses || 0) + 1;
-            await player1.save();
+        if (match.status !== 'completed') {
+            return res.status(400).json({ message: 'Match not completed yet' });
         }
 
-        if (player2 && !player2._id.equals(match.winner)) {
-            player2.losses = (player2.losses || 0) + 1;
-            await player2.save();
-        }
-    } catch (err) {
-        logger.error('Update stats error:', err);
+        const matchCardGenerator = require('../services/matchCardGenerator');
+        
+        const cardBuffer = await matchCardGenerator.generateCard({
+            player1Name: match.player1?.username || 'TBD',
+            player2Name: match.player2?.username || 'TBD',
+            score1: match.score1 || 0,
+            score2: match.score2 || 0,
+            winner: match.winner?.username || 'Unknown',
+            tournamentName: match.tournament?.name || 'Tournament',
+            date: new Date(match.updatedAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            })
+        });
+
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Content-Disposition', `attachment; filename=match-card-${match._id}.png`);
+        res.send(cardBuffer);
+    } catch (error) {
+        console.error('Share card error:', error);
+        res.status(500).json({ message: error.message });
     }
-}
+});
 
 // Debug routes (development only)
 if (process.env.NODE_ENV !== 'production') {

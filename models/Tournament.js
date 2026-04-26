@@ -26,23 +26,38 @@ const tournamentSchema = new mongoose.Schema({
         maxPlayers: { type: Number, default: 32 },
         minPlayers: { type: Number, default: 2 },
         registrationDeadline: { type: Date },
-        // NEW: Dynamic bracket re-seeding settings
         reseedAfterRound: { 
             type: Boolean, 
-            default: true,
-            description: 'If true, bracket is re-generated after each round with winners re-seeded'
+            default: true
         },
         reseedMethod: {
             type: String,
             enum: ['original_seed', 'random', 'standings'],
-            default: 'original_seed',
-            description: 'How to re-seed winners for next round: original_seed (highest vs lowest), random, or standings-based'
+            default: 'original_seed'
         }
     },
     entryFee: {
         type: Number,
         required: true,
-        min: 0
+        min: 0,
+        default: 0
+    },
+    // NEW: Platform fee percentage (default 10%)
+    platformFee: {
+        type: Number,
+        default: 10,
+        min: 0,
+        max: 100
+    },
+    // NEW: Free tournament flag
+    isFree: {
+        type: Boolean,
+        default: false
+    },
+    // NEW: Auto-start when max players reached
+    autoStart: {
+        type: Boolean,
+        default: false
     },
     prizePool: {
         type: Number,

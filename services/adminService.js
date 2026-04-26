@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const { TournamentLogicFactory } = require('./tournamentLogic');

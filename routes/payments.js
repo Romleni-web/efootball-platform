@@ -1,4 +1,4 @@
-// routes/payments.js - CLEAN VERSION
+// routes/payments.js - COMPLETE WITH 10% PLATFORM FEE
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
@@ -43,6 +43,11 @@ router.post('/entry', require('../middleware/upload').single('screenshot'), auth
         const tournament = await Tournament.findById(tournamentId);
         if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
         if (tournament.status !== 'open') return res.status(400).json({ message: 'Tournament registration is closed' });
+        
+        // Check if free tournament
+        if (tournament.isFree || tournament.entryFee === 0) {
+            return res.status(400).json({ message: 'This is a free tournament. Use "Join Free Tournament" button.' });
+        }
 
         const alreadyRegistered = tournament.registeredPlayers.some(p => p.user.toString() === req.user.id);
         if (alreadyRegistered) return res.status(400).json({ message: 'Already registered for this tournament' });
@@ -107,7 +112,7 @@ router.get('/pending', auth, adminOnly, async (req, res) => {
     }
 });
 
-// POST /api/payments/verify/:id (Admin only)
+// POST /api/payments/verify/:id (Admin only) - WITH 10% PLATFORM FEE
 router.post('/verify/:id', auth, adminOnly, async (req, res) => {
     try {
         const { action, reason } = req.body;
@@ -126,7 +131,9 @@ router.post('/verify/:id', auth, adminOnly, async (req, res) => {
 
             const playerIndex = tournament.registeredPlayers.findIndex(p => p.user.toString() === payment.user.toString());
             if (playerIndex !== -1) tournament.registeredPlayers[playerIndex].paid = true;
-            tournament.prizePool += payment.amount * 0.8;
+            
+            // FIXED: 10% platform fee (90% to prize pool)
+            tournament.prizePool += payment.amount * 0.9;
         } else {
             payment.status = 'rejected';
             payment.rejectionReason = reason;

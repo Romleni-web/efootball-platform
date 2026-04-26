@@ -1,4 +1,4 @@
-// routes/tournaments.js - COMPLETE FIXED VERSION
+// routes/tournaments.js - COMPLETE WITH isFree, autoStart, and registration validation
 const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
@@ -31,6 +31,53 @@ const adminOnly = async (req, res, next) => {
     }
     next();
 };
+
+// Auto-start tournament helper function
+async function startTournamentAutomatically(tournamentId, req) {
+    const tournament = await Tournament.findById(tournamentId)
+        .populate('registeredPlayers.user');
+    
+    if (!tournament) return null;
+    if (tournament.status !== 'open') return null;
+    if (tournament.bracketGeneratedAt) return null;
+    
+    const paidPlayers = tournament.registeredPlayers.filter(p => p.paid);
+    
+    if (paidPlayers.length < tournament.settings.minPlayers) {
+        console.log(`Tournament ${tournament.name}: Not enough players (${paidPlayers.length}/${tournament.settings.minPlayers})`);
+        return null;
+    }
+    
+    const logic = TournamentLogicFactory.create(tournament);
+    const matchInstances = await logic.generateBracket(paidPlayers);
+    
+    const savedMatches = await Match.insertMany(matchInstances.map(m => ({
+        tournament: tournament._id,
+        round: m.round,
+        matchNumber: m.matchNumber,
+        player1: m.player1,
+        player2: m.player2,
+        status: m.status,
+        winner: m.winner,
+        bracket: m.bracket || 'winners',
+        isBronzeMatch: m.isBronzeMatch || false
+    })));
+    
+    tournament.matches = savedMatches.map(m => m._id);
+    tournament.bracketGeneratedAt = new Date();
+    tournament.status = 'ongoing';
+    tournament.currentRound = 1;
+    await tournament.save();
+    
+    console.log(`Tournament ${tournament.name} auto-started with ${savedMatches.length} matches`);
+    
+    const io = req.app?.get('io');
+    if (io) {
+        io.emit('tournament-started', { tournamentId: tournament._id, name: tournament.name });
+    }
+    
+    return tournament;
+}
 
 // GET all tournaments - PUBLIC
 router.get('/', async (req, res) => {
@@ -68,13 +115,14 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST create tournament - ADMIN ONLY
+// POST create tournament - ADMIN ONLY (with isFree and autoStart)
 router.post('/', auth, adminOnly, async (req, res) => {
     try {
         const {
             name, description, format, settings,
             entryFee, prizePool, prizeDistribution,
-            startDate, endDate, adminPhone, whatsappLink
+            startDate, endDate, adminPhone, whatsappLink,
+            isFree, autoStart  // NEW fields
         } = req.body;
 
         const tournament = new Tournament({
@@ -93,8 +141,10 @@ router.post('/', auth, adminOnly, async (req, res) => {
                 minPlayers: settings?.minPlayers || 2,
                 ...settings
             },
-            entryFee,
-            prizePool,
+            entryFee: isFree ? 0 : (parseInt(entryFee) || 0),
+            isFree: isFree || false,
+            autoStart: autoStart || false,
+            prizePool: prizePool || 0,
             prizeDistribution: prizeDistribution || { first: 50, second: 30, third: 20 },
             startDate,
             endDate,
@@ -155,7 +205,6 @@ router.post('/:id/generate-bracket', auth, adminOnly, async (req, res) => {
         tournament.currentRound = 1;
         await tournament.save();
 
-        // Robust Bye Processing: Recursively advance all matches that don't need a second player
         let roundsProcessed = 0;
         let matchesToAdvance = savedMatches.filter(m => m.status === 'completed' && m.winner);
         
@@ -187,93 +236,65 @@ router.post('/:id/generate-bracket', auth, adminOnly, async (req, res) => {
     }
 });
 
-router.post('/:id/generate-next-round', auth, adminOnly, async (req, res) => {
-    try {
-        const tournament = await Tournament.findById(req.params.id);
-        const currentRound = tournament.currentRound || 1;
-        const roundMatches = await Match.find({ tournament: tournament._id, round: currentRound });
-        if (!roundMatches.every(m => ['completed','bye'].includes(m.status))) {
-            return res.status(400).json({ error: 'Round not complete', completed: roundMatches.filter(m => ['completed','bye'].includes(m.status)).length, total: roundMatches.length });
-        }
-        const result = await adminService.regenerateRound(tournament._id, currentRound);
-        res.json(result);
-    } catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-// POST regenerate round - ADMIN ONLY
-router.post('/:id/regenerate-round', auth, adminOnly, async (req, res) => {
-    try {
-        const { round } = req.body;
-        const result = await adminService.regenerateRound(req.params.id, parseInt(round));
-        
-        res.json({
-            success: true,
-            ...result
-        });
-    } catch (error) {
-        console.error('Regenerate round error:', error);
-        res.status(500).json({ message: error.message });
-    }
-});
-
-router.post('/:id/sync-bracket', auth, adminOnly, async (req, res) => {
-    try { res.json(await adminService.syncTournamentBracket(req.params.id)); }
-    catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-router.post('/:id/force-generate-round', auth, adminOnly, async (req, res) => {
-    try { res.json(await adminService.forceGenerateRound(req.params.id, req.body.roundNumber, req.body.playerIds)); }
-    catch (error) { res.status(500).json({ message: error.message }); }
-});
-
-// POST register for tournament - AUTH REQUIRED
+// POST register for tournament - AUTH REQUIRED (with free tournament support)
 router.post('/:id/register', auth, async (req, res) => {
     const tournamentId = req.params.id;
     const userId = req.user._id;
 
     try {
-        const result = await Tournament.findOneAndUpdate(
-            {
-                _id: tournamentId,
-                status: 'open',
-                $expr: { $lt: [{ $size: '$registeredPlayers' }, '$settings.maxPlayers'] },
-                'registeredPlayers.user': { $ne: userId }
-            },
-            {
-                $push: {
-                    registeredPlayers: {
-                        user: userId,
-                        paid: false,
-                        registeredAt: new Date()
-                    }
-                }
-            },
-            { new: true, runValidators: true }
+        const tournament = await Tournament.findById(tournamentId);
+        
+        if (!tournament) {
+            return res.status(404).json({ message: 'Tournament not found' });
+        }
+        
+        if (tournament.status !== 'open') {
+            return res.status(400).json({ message: `Tournament is ${tournament.status}. Registration closed.` });
+        }
+        
+        const alreadyRegistered = tournament.registeredPlayers.some(
+            p => p.user.toString() === userId.toString()
         );
-
-        if (!result) {
-            const tournament = await Tournament.findById(tournamentId);
-            if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
-            if (tournament.status !== 'open') return res.status(400).json({ message: `Tournament is ${tournament.status}` });
-            const alreadyRegistered = tournament.registeredPlayers.some(rp => rp.user.toString() === userId.toString());
-            if (alreadyRegistered) return res.status(400).json({ message: 'Already registered' });
+        
+        if (alreadyRegistered) {
+            return res.status(400).json({ message: 'Already registered for this tournament' });
+        }
+        
+        if (tournament.registeredPlayers.length >= tournament.settings.maxPlayers) {
             return res.status(400).json({ message: 'Tournament is full' });
         }
 
+        // For free tournaments, auto-approve payment
+        const isFree = tournament.isFree || tournament.entryFee === 0;
+        
+        tournament.registeredPlayers.push({
+            user: userId,
+            paid: isFree,  // Auto-approved for free tournaments
+            registeredAt: new Date()
+        });
+        
+        await tournament.save();
+        
+        // Check if tournament should auto-start
+        if (tournament.autoStart && tournament.registeredPlayers.filter(p => p.paid).length >= tournament.settings.maxPlayers) {
+            await startTournamentAutomatically(tournament._id, req);
+        }
+        
         res.json({ 
             success: true, 
-            message: 'Registered successfully',
+            message: isFree ? 'Registered successfully!' : 'Registered successfully. Payment pending verification.',
             tournament: {
-                _id: result._id,
-                name: result.name,
-                registeredCount: result.registeredPlayers.length,
-                maxPlayers: result.settings.maxPlayers,
-                spotsRemaining: result.settings.maxPlayers - result.registeredPlayers.length
+                _id: tournament._id,
+                name: tournament.name,
+                registeredCount: tournament.registeredPlayers.length,
+                maxPlayers: tournament.settings.maxPlayers,
+                spotsRemaining: tournament.settings.maxPlayers - tournament.registeredPlayers.length,
+                isFree: isFree
             }
         });
     } catch (error) {
         console.error('Register error:', error);
-        res.status(500).json({ message: 'Registration failed' });
+        res.status(500).json({ message: 'Registration failed: ' + error.message });
     }
 });
 
@@ -346,7 +367,6 @@ router.get('/:id/standings', async (req, res) => {
         
         const logic = TournamentLogicFactory.create(tournament);
         
-        // Use rankings for elimination, standings for round-based
         const isRoundBased = ['round_robin', 'league', 'swiss'].includes(tournament.format);
         const standings = isRoundBased ? logic.calculateStandings() : logic.getFinalRankings(tournament.matches);
 
@@ -383,5 +403,24 @@ router.get('/:id/matches', async (req, res) => {
     }
 });
 
-// CRITICAL: Export the router
+// POST regenerate round - ADMIN ONLY
+router.post('/:id/regenerate-round', auth, adminOnly, async (req, res) => {
+    try {
+        const { round } = req.body;
+        const result = await adminService.regenerateRound(req.params.id, parseInt(round));
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Regenerate round error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/:id/sync-bracket', auth, adminOnly, async (req, res) => {
+    try { 
+        res.json(await adminService.syncTournamentBracket(req.params.id)); 
+    } catch (error) { 
+        res.status(500).json({ message: error.message }); 
+    }
+});
+
 module.exports = router;

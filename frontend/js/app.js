@@ -1,3 +1,16 @@
+// Share match result function
+async function shareMatchResult(matchId) {
+    try {
+        UI.showLoading();
+        await API.shareMatchResult(matchId);
+        UI.showToast('Match card generated and saved!', 'success');
+    } catch (error) {
+        UI.showToast(error.message, 'error');
+    } finally {
+        UI.hideLoading();
+    }
+}
+
 const Router = {
     currentPage: 'home',
 
@@ -221,34 +234,14 @@ const ChatUI = {
 
 const Pages = {
     TOURNAMENT_FORMATS: {
-        single_elimination: {
-            name: 'Single Elimination',
-            description: 'Lose once and you\'re out. Fast and simple.',
-            recommended: '8-64 players'
-        },
-        double_elimination: {
-            name: 'Double Elimination',
-            description: 'Two losses to eliminate. Fairer but longer.',
-            recommended: '8-32 players'
-        },
-        round_robin: {
-            name: 'Round Robin',
-            description: 'Everyone plays everyone. Best for small groups.',
-            recommended: '4-12 players'
-        },
-        swiss: {
-            name: 'Swiss System',
-            description: 'Play similar-skilled opponents. Chess/Esports standard.',
-            recommended: '8-128 players'
-        },
-        league: {
-            name: 'League',
-            description: 'Season-long competition with home/away fixtures.',
-            recommended: '4-20 players'
-        }
+        single_elimination: { name: 'Single Elimination', description: 'Lose once and you\'re out. Fast and simple.', recommended: '8-64 players' },
+        double_elimination: { name: 'Double Elimination', description: 'Two losses to eliminate. Fairer but longer.', recommended: '8-32 players' },
+        round_robin: { name: 'Round Robin', description: 'Everyone plays everyone. Best for small groups.', recommended: '4-12 players' },
+        swiss: { name: 'Swiss System', description: 'Play similar-skilled opponents. Chess/Esports standard.', recommended: '8-128 players' },
+        league: { name: 'League', description: 'Season-long competition with home/away fixtures.', recommended: '4-20 players' }
     },
 
-        async home() {
+    async home() {
         const mainContent = document.getElementById('mainContent');
         mainContent.innerHTML = '<div class="spinner"></div>';
 
@@ -308,7 +301,6 @@ const Pages = {
                 </div>
             </section>
 
-            <!-- Player Cards Showcase - Only on Home -->
             <section class="player-showcase" aria-label="Featured players">
                 <h2>Featured Players</h2>
                 <div class="player-cards-grid">
@@ -348,28 +340,28 @@ const Pages = {
                 <div class="steps-grid">
                     <div class="step-card">
                         <div class="step-icon" data-step="1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <h3>Register</h3>
                         <p>Create your account and set your eFootball ID</p>
                     </div>
                     <div class="step-card">
                         <div class="step-icon" data-step="2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
                         </div>
                         <h3>Pay Entry Fee</h3>
                         <p>Send M-Pesa to admin and upload proof</p>
                     </div>
                     <div class="step-card">
                         <div class="step-icon" data-step="3">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>
                         </div>
                         <h3>Play & Win</h3>
                         <p>Compete in matches and submit results</p>
                     </div>
                     <div class="step-card">
                         <div class="step-icon" data-step="4">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                         </div>
                         <h3>Collect Prizes</h3>
                         <p>Winners receive M-Pesa prize money</p>
@@ -377,8 +369,6 @@ const Pages = {
                 </div>
             </section>
         `;
-
-        // Chat is accessed via nav bar button only
     },
 
     login() {
@@ -412,8 +402,8 @@ const Pages = {
                 });
                 Auth.setAuth(data.token, data.user);
                 UI.showToast('Welcome back!', 'success');
-            const chatBtn = document.getElementById('chatToggleBtn');
-            if (chatBtn) chatBtn.style.display = 'flex';
+                const chatBtn = document.getElementById('chatToggleBtn');
+                if (chatBtn) chatBtn.style.display = 'flex';
                 Router.navigate('dashboard');
             } catch (error) {
                 UI.showToast(error.message, 'error');
@@ -553,8 +543,8 @@ const Pages = {
                 });
                 Auth.setAuth(data.token, data.user);
                 UI.showToast('Account created! Welcome!', 'success');
-            const chatBtn = document.getElementById('chatToggleBtn');
-            if (chatBtn) chatBtn.style.display = 'flex';
+                const chatBtn = document.getElementById('chatToggleBtn');
+                if (chatBtn) chatBtn.style.display = 'flex';
                 Router.navigate('dashboard');
             } catch (error) {
                 UI.showToast(error.message, 'error');
@@ -612,7 +602,7 @@ const Pages = {
                     
                     <div class="stats-grid" style="margin-top: 1.5rem;">
                         <div class="stat-card">
-                            <div class="stat-value">${UI.formatCurrency(tournament.prizePool || tournament.entryFee * tournament.registeredPlayers?.length * 0.8)}</div>
+                            <div class="stat-value">${UI.formatCurrency(tournament.prizePool || tournament.entryFee * tournament.registeredPlayers?.length * 0.9)}</div>
                             <div class="stat-label">Prize Pool</div>
                         </div>
                         <div class="stat-card">
@@ -652,6 +642,7 @@ const Pages = {
                     <button class="tab-btn" onclick="Pages.switchTab('players')">Players</button>
                     <button class="tab-btn" onclick="Pages.switchTab('matches')">Matches</button>
                     ${!isRoundBased ? `<button class="tab-btn" onclick="Pages.switchTab('bracket')">Bracket</button>` : ''}
+                    <button class="tab-btn" onclick="Pages.switchTab('winners')">Winners</button>
                 </div>
 
                 <div id="tab-standings" class="tab-content active">
@@ -667,13 +658,17 @@ const Pages = {
                 <div id="tab-bracket" class="tab-content">
                     ${await this.renderBracket(id)}
                 </div>` : ''}
+                <div id="tab-winners" class="tab-content">
+                    ${UI.renderWinners(tournament)}
+                </div>
             `;
 
-            // Initialize any match lobby chats found in the matches list
-            document.querySelectorAll('.chat-container').forEach(chat => {
-                const roomId = chat.dataset.room;
-                if (roomId && roomId !== 'global') ChatUI.attachListeners(roomId);
-            });
+            if (typeof ChatUI !== 'undefined' && ChatUI.attachListeners) {
+                document.querySelectorAll('.chat-container').forEach(chat => {
+                    const roomId = chat.dataset.room;
+                    if (roomId && roomId !== 'global') ChatUI.attachListeners(roomId);
+                });
+            }
         } catch (error) {
             mainContent.innerHTML = `<div class="empty-state"><p>Tournament not found</p></div>`;
         }
@@ -701,74 +696,18 @@ const Pages = {
         }
     },
 
-    renderStandings(tournament) {
-        if (!tournament.standings || tournament.standings.length === 0) {
-            return `
-                <div class="empty-state">
-                    <p>Standings will appear once matches are played</p>
-                    ${tournament.status === 'ongoing' ? '<p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">Matches are in progress...</p>' : ''}
-                </div>
-            `;
-        }
-
-        return `
-            <div class="standings-container">
-                <table class="standings-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Player</th>
-                            <th>P</th>
-                            <th>W</th>
-                            <th>D</th>
-                            <th>L</th>
-                            <th>GF</th>
-                            <th>GA</th>
-                            <th>GD</th>
-                            <th>PTS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tournament.standings.map((s, i) => `
-                            <tr class="${i < 3 ? 'rank-' + (i + 1) : ''} ${s.player?._id === Auth.getUser()?._id ? 'highlight-user' : ''}">
-                                <td>${s.rank}</td>
-                                <td>
-                                    <strong>${s.player?.username || 'Unknown'}</strong>
-                                    ${s.player?.teamName ? `<br><small>${s.player.teamName}</small>` : ''}
-                                    ${s.player?._id === Auth.getUser()?._id ? '<span class="you-badge">(You)</span>' : ''}
-                                </td>
-                                <td>${s.played}</td>
-                                <td class="text-success">${s.wins}</td>
-                                <td>${s.draws}</td>
-                                <td class="text-danger">${s.losses}</td>
-                                <td>${s.goalsFor}</td>
-                                <td>${s.goalsAgainst}</td>
-                                <td class="${s.goalDifference > 0 ? 'text-success' : s.goalDifference < 0 ? 'text-danger' : ''}">${s.goalDifference > 0 ? '+' : ''}${s.goalDifference}</td>
-                                <td class="points">${s.points}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-    },
-
     async renderBracket(tournamentId) {
-        if (!Auth.isAuthenticated()) {
-            return '<div class="empty-state"><p>Login to view bracket</p></div>';
-        }
-
         if (!window._bracketSocketInit) {
-    API.initSocket();
-    if (API.socket) {
-        API.socket.emit('join-tournament', tournamentId);
-        API.socket.on('bracket-update', (data) => {
-            const container = document.querySelector('.bracket');
-            if (container) container.outerHTML = this.renderBracketFromData(data.matches);
-        });
-    }
-    window._bracketSocketInit = true;
-}
+            API.initSocket();
+            if (API.socket) {
+                API.socket.emit('join-tournament', tournamentId);
+                API.socket.on('bracket-update', (data) => {
+                    const container = document.querySelector('.bracket');
+                    if (container) container.outerHTML = this.renderBracketFromData(data.matches);
+                });
+            }
+            window._bracketSocketInit = true;
+        }
 
         try {
             const data = await API.getTournamentBracket(tournamentId);
@@ -821,10 +760,10 @@ const Pages = {
     },
 
     renderBracketFromData(matches) {
-    const rounds = {};
-    matches.forEach(m => { if (!rounds[m.round]) rounds[m.round] = []; rounds[m.round].push(m); });
-    return `<div class="bracket">${Object.keys(rounds).sort((a,b)=>a-b).map(r=>`<div class="round"><h4 class="round-title">Round ${r}</h4>${rounds[r].map(m=>`<div class="match ${m.status}"><div class="player ${m.winner?._id===m.player1?._id?'winner':''} ${!m.player1?'tbd':''}"><span class="player-name">${m.player1?.username||'TBD'}</span><span class="player-score">${m.score1??'-'}</span></div><div class="player ${m.winner?._id===m.player2?._id?'winner':''} ${!m.player2?'tbd':''}"><span class="player-name">${m.player2?.username||'TBD'}</span><span class="player-score">${m.score2??'-'}</span></div></div>`).join('')}</div>`).join('')}</div>`;
-},
+        const rounds = {};
+        matches.forEach(m => { if (!rounds[m.round]) rounds[m.round] = []; rounds[m.round].push(m); });
+        return `<div class="bracket">${Object.keys(rounds).sort((a,b)=>a-b).map(r=>`<div class="round"><h4 class="round-title">Round ${r}</h4>${rounds[r].map(m=>`<div class="match ${m.status}"><div class="player ${m.winner?._id===m.player1?._id?'winner':''} ${!m.player1?'tbd':''}"><span class="player-name">${m.player1?.username||'TBD'}</span><span class="player-score">${m.score1??'-'}</span></div><div class="player ${m.winner?._id===m.player2?._id?'winner':''} ${!m.player2?'tbd':''}"><span class="player-name">${m.player2?.username||'TBD'}</span><span class="player-score">${m.score2??'-'}</span></div></div>`).join('')}</div>`).join('')}</div>`;
+    },
 
     renderPlayersList(players) {
         if (!players || players.length === 0) {
@@ -845,8 +784,8 @@ const Pages = {
                     <tbody>
                         ${players.map((p, idx) => `
                             <tr>
-                                <td>${idx + 1}</td>
-                                <td>${p.user?.username || 'Unknown'}</td>
+                                <td class="rank-cell">${idx + 1}</td>
+                                <td><strong>${p.user?.username || 'Unknown'}</strong></td>
                                 <td>${p.user?.teamName || '-'}</td>
                                 <td>${p.paid ? '<span class="status-paid">Paid</span>' : '<span class="status-pending">Pending</span>'}</td>
                             </tr>
@@ -908,6 +847,14 @@ const Pages = {
                                 ${winnerName ? `
                                     <div class="match-winner">
                                         Winner: ${winnerName}
+                                        <button class="share-btn" onclick="shareMatchResult('${match._id}')">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                                <polyline points="16 6 12 2 8 6"/>
+                                                <line x1="12" y1="2" x2="12" y2="15"/>
+                                            </svg>
+                                            Share Result
+                                        </button>
                                     </div>
                                 ` : ''}
                                 
@@ -955,15 +902,15 @@ const Pages = {
                     <aside class="sidebar">
                         <ul class="sidebar-menu">
                             <li><a href="#" class="active" onclick="Router.navigate('dashboard')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
                                 Overview
                             </a></li>
                             <li><a href="#" onclick="Router.navigate('profile')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                 My Profile
                             </a></li>
                             <li><a href="#" onclick="Router.navigate('tournaments')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                                 Browse Tournaments
                             </a></li>
                         </ul>
@@ -1001,12 +948,15 @@ const Pages = {
                         <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">Upcoming Matches</h3>
                         ${safeUpcoming.length ? safeUpcoming.map(m => `
                             <div class="tournament-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                                     <div>
                                         <h4 style="font-weight: 700;">vs ${m.opponent?.username || 'Unknown'}</h4>
                                         <p style="color: var(--gray-500); font-size: 0.875rem;">${m.tournament?.name || 'Unknown Tournament'}</p>
                                     </div>
-                                    <button class="btn btn-primary" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button class="btn btn-secondary btn-sm" onclick="Router.navigate('tournament/${m.tournament?._id}')">View Tournament</button>
+                                        <button class="btn btn-primary btn-sm" onclick="UI.showSubmitResultModal('${m._id}', '${m.tournament?._id}', '${m.player?.username || 'You'}', '${m.opponent?.username || 'Opponent'}')">Submit Result</button>
+                                    </div>
                                 </div>
                                 <div class="efootball-id-box">
                                     <p style="margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem;"><strong>Opponent eFootball ID:</strong></p>
@@ -1084,167 +1034,377 @@ const Pages = {
         const mainContent = document.getElementById('mainContent');
         
         try {
-            const [stats, pendingPayments, pendingResults] = await Promise.all([
+            const [stats, pendingPayments, pendingResults, tournaments] = await Promise.all([
                 API.getAdminStats(),
                 API.getPendingPayments(),
-                API.getPendingResults()
+                API.getPendingResults(),
+                API.getTournaments()
             ]);
 
             mainContent.innerHTML = `
                 <div class="dashboard">
                     <aside class="sidebar">
                         <ul class="sidebar-menu">
-                            <li><a href="#" class="active">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                                Dashboard
+                            <li><a href="#" class="active" onclick="Pages.switchAdminTab('overview')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                Overview
+                            </a></li>
+                            <li><a href="#" onclick="Pages.switchAdminTab('tournaments')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                                Manage Tournaments
                             </a></li>
                             <li><a href="#" onclick="Pages.showCreateTournamentModal()">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                                 Create Tournament
                             </a></li>
-                            <li><a href="#" onclick="Router.navigate('tournaments')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                                All Tournaments
+                            <li><a href="#" onclick="Pages.switchAdminTab('payments')">
+                                ${UI.icons.wallet} Verify Payments (${pendingPayments?.length || 0})
+                            </a></li>
+                            <li><a href="#" onclick="Pages.switchAdminTab('matches')">
+                                ${UI.icons.sword} Verify Matches (${pendingResults?.length || 0})
+                            </a></li>
+                            <li><a href="#" onclick="Pages.switchAdminTab('prizes')">
+                                ${UI.icons.trophy} Prize Distribution
                             </a></li>
                         </ul>
                     </aside>
 
                     <div class="dashboard-content">
-                        <h2 style="color: var(--dark); margin-bottom: 1.5rem; font-weight: 800; font-family: var(--font-display); letter-spacing: -0.02em;">
-                            Admin Panel <span class="admin-badge">Admin</span>
-                        </h2>
-
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.totalUsers || 0}</div>
-                                <div class="stat-label">Total Users</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.totalTournaments || 0}</div>
-                                <div class="stat-label">Tournaments</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${(pendingPayments?.length || 0) + (pendingResults?.length || 0)}</div>
-                                <div class="stat-label">Pending Verifications</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">${UI.formatCurrency(stats.totalRevenue || 0)}</div>
-                                <div class="stat-label">Total Revenue</div>
+                        <div id="admin-overview" class="admin-tab active">
+                            <h2>Admin Overview</h2>
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value">${stats.totalUsers || 0}</div>
+                                    <div class="stat-label">Total Users</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${stats.totalTournaments || 0}</div>
+                                    <div class="stat-label">Tournaments</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${(pendingPayments?.length || 0) + (pendingResults?.length || 0)}</div>
+                                    <div class="stat-label">Pending Verifications</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${UI.formatCurrency(stats.totalRevenue || 0)}</div>
+                                    <div class="stat-label">Total Revenue</div>
+                                </div>
                             </div>
                         </div>
-
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">
-                            Payment Verifications (${pendingPayments?.length || 0})
-                        </h3>
-                        ${pendingPayments?.length ? `
-                            <div class="pending-payments">
-                                ${pendingPayments.map(p => `
-                                    <div class="payment-item">
-                                        <div class="payment-info">
-                                            <img src="${p.screenshotPath}" alt="Payment proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')" loading="lazy">
-                                            <div>
-                                                <strong>${p.user?.username || 'Unknown'}</strong>
-                                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0;">
-                                                    ${p.tournament?.name || 'Unknown Tournament'}<br>
-                                                    ${UI.formatCurrency(p.amount)} | ${p.mpesaNumber}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="payment-actions">
-                                            <button class="btn btn-success btn-sm" onclick="Pages.verifyPayment('${p._id}', 'approve')">Approve</button>
-                                            <button class="btn btn-danger btn-sm" onclick="Pages.verifyPayment('${p._id}', 'reject')">Reject</button>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                        
+                        <div id="admin-tournaments" class="admin-tab" style="display:none;">
+                            <h2>Manage Tournaments</h2>
+                            <div class="card-grid">
+                                ${tournaments.map(t => this.renderAdminTournamentCard(t)).join('')}
                             </div>
-                        ` : '<p style="color: var(--gray-500);">No pending payments.</p>'}
+                        </div>
+                        
+                        <div id="admin-payments" class="admin-tab" style="display:none;">
+                            <h2>Payment Verifications (${pendingPayments?.length || 0})</h2>
+                            ${this.renderPendingPayments(pendingPayments)}
+                        </div>
+                        
+                        <div id="admin-matches" class="admin-tab" style="display:none;">
+                            <h2>Match Verifications (${pendingResults?.length || 0})</h2>
+                            ${this.renderPendingResults(pendingResults)}
+                        </div>
 
-                        <h3 style="color: var(--dark); margin: 2rem 0 1rem; font-weight: 700; font-family: var(--font-display);">
-                            Match Verifications (${pendingResults?.length || 0})
-                        </h3>
-                        ${pendingResults?.length ? `
-                            <div class="pending-results">
-                                ${pendingResults.map(r => `
-                                    <div class="result-item ${r.status === 'disputed' ? 'disputed' : 'pending'}">
-                                        <div class="result-header">
-                                            <div>
-                                                <strong>${r.tournament?.name || 'Unknown Tournament'}</strong>
-                                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0.25rem 0;">
-                                                    Round ${r.round || '-'} | ${r.status === 'disputed' ? 'DISPUTED' : 'Waiting for opponent'}
-                                                </p>
-                                            </div>
-                                            <span class="status-badge ${r.status}">${r.status === 'disputed' ? 'Disputed' : 'Pending'}</span>
-                                        </div>
-                                        
-                                        <div class="result-submissions">
-                                            <div class="submission ${r.player1?.submitted ? 'submitted' : ''}">
-                                                <div class="submission-header">
-                                                    <strong>${r.player1?.user?.username || 'Player 1'}</strong>
-                                                    ${r.player1?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
-                                                </div>
-                                                ${r.player1?.submitted ? `
-                                                    <div class="submission-score">${r.player1?.submission?.score1} - ${r.player1?.submission?.score2}</div>
-                                                    <div class="submission-winner">Winner: ${r.player1?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
-                                                ` : '<span class="not-submitted">Not submitted</span>'}
-                                            </div>
-
-                                            <div class="submission ${r.player2?.submitted ? 'submitted' : ''}">
-                                                <div class="submission-header">
-                                                    <strong>${r.player2?.user?.username || 'Player 2'}</strong>
-                                                    ${r.player2?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
-                                                </div>
-                                                ${r.player2?.submitted ? `
-                                                    <div class="submission-score">${r.player2?.submission?.score1} - ${r.player2?.submission?.score2}</div>
-                                                    <div class="submission-winner">Winner: ${r.player2?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
-                                                ` : '<span class="not-submitted">Not submitted</span>'}
-                                            </div>
-                                        </div>
-
-                                        ${r.status === 'disputed' ? `
-                                            <div class="dispute-actions">
-                                                <p class="dispute-warning">
-                                                    ${UI.icons.warning} Results do not match! 
-                                                    <span style="font-size: 0.75rem; opacity: 0.8;">
-                                                        (${r.conflicts.score ? 'Score Conflict' : ''} 
-                                                         ${r.conflicts.score && r.conflicts.winner ? '&' : ''} 
-                                                         ${r.conflicts.winner ? 'Winner Conflict' : ''})
-                                                    </span>
-                                                </p>
-                                                ${r.isStale ? `<p style="color: var(--danger); font-size: 0.75rem; font-weight: 700;">STALE: No activity for 30m</p>` : ''}
-                                                <div class="action-buttons">
-                                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
-                                                        ${r.player1?.user?.username} Correct
-                                                    </button>
-                                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
-                                                        ${r.player2?.user?.username} Correct
-                                                    </button>
-                                                    <button class="btn btn-warning btn-sm" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
-                                                        Custom
-                                                    </button>
-                                                    <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
-                                                        Debug
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ` : `
-                                            <p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">
-                                                ${r.disputeReason || ''}
-                                            </p>
-                                            <div style="margin-top: 0.75rem;">
-                                                <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
-                                                    Debug
-                                                </button>
-                                            </div>
-                                        `}
-                                    </div>
-                                `).join('')}
+                        <div id="admin-prizes" class="admin-tab" style="display:none;">
+                            <h2>Prize Distribution</h2>
+                            <div id="prizeDistributionList">
+                                <div class="spinner"></div>
                             </div>
-                        ` : '<p style="color: var(--gray-500);">No matches need verification.</p>'}
+                        </div>
                     </div>
                 </div>
             `;
+
+            // Load prize distribution data
+            const prizeContainer = document.getElementById('prizeDistributionList');
+            if (prizeContainer) {
+                prizeContainer.innerHTML = await this.renderPrizeDistribution();
+            }
         } catch (error) {
-            mainContent.innerHTML = `<div class="empty-state"><p>Error loading admin panel</p></div>`;
+            console.error('Admin error:', error);
+            mainContent.innerHTML = `<div class="empty-state"><p>Error loading admin panel: ${error.message}</p></div>`;
+        }
+    },
+
+    renderAdminTournamentCard(tournament) {
+        return `
+            <div class="tournament-card">
+                <div class="tournament-header">
+                    <h3>${tournament.name}</h3>
+                    <span class="tournament-status status-${tournament.status}">${tournament.status}</span>
+                </div>
+                <div class="tournament-meta">
+                    <span>${tournament.registeredPlayers?.length || 0}/${tournament.settings?.maxPlayers || 32} players</span>
+                    <span>${UI.formatCurrency(tournament.entryFee)} entry</span>
+                    ${tournament.isFree ? '<span class="status-paid">FREE</span>' : ''}
+                </div>
+                <div class="admin-actions">
+                    ${tournament.status === 'open' ? `
+                        <button class="btn btn-warning btn-sm" onclick="UI.startTournament('${tournament._id}')">
+                            ${UI.icons.play} Start Tournament
+                        </button>
+                    ` : ''}
+                    ${tournament.status === 'ongoing' ? `
+                        <button class="btn btn-secondary btn-sm" onclick="UI.regenerateRound('${tournament._id}', ${tournament.currentRound})">
+                            ${UI.icons.refresh} Generate Next Round
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="UI.syncBracket('${tournament._id}')">
+                            ${UI.icons.refresh} Sync Bracket
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="Router.navigate('tournament/${tournament._id}')">
+                            ${UI.icons.eye} View
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-primary btn-sm" onclick="Router.navigate('tournament/${tournament._id}')">
+                        View Details
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+
+    renderPendingPayments(payments) {
+        if (!payments?.length) return '<p style="color: var(--gray-500);">No pending payments.</p>';
+        return `
+            <div class="pending-payments">
+                ${payments.map(p => `
+                    <div class="payment-item">
+                        <div class="payment-info">
+                            <img src="${p.screenshotPath}" alt="Payment proof" class="payment-proof-img" onclick="window.open('${p.screenshotPath}', '_blank')" loading="lazy">
+                            <div>
+                                <strong>${p.user?.username || 'Unknown'}</strong>
+                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0;">
+                                    ${p.tournament?.name || 'Unknown Tournament'}<br>
+                                    ${UI.formatCurrency(p.amount)} | ${p.mpesaNumber}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="payment-actions">
+                            <button class="btn btn-success btn-sm" onclick="Pages.verifyPayment('${p._id}', 'approve')">Approve</button>
+                            <button class="btn btn-danger btn-sm" onclick="Pages.verifyPayment('${p._id}', 'reject')">Reject</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
+
+    renderPendingResults(results) {
+        if (!results?.length) return '<p style="color: var(--gray-500);">No matches need verification.</p>';
+        return `
+            <div class="pending-results">
+                ${results.map(r => `
+                    <div class="result-item ${r.status === 'disputed' ? 'disputed' : 'pending'}">
+                        <div class="result-header">
+                            <div>
+                                <strong>${r.tournament?.name || 'Unknown Tournament'}</strong>
+                                <p style="color: var(--gray-500); font-size: 0.875rem; margin: 0.25rem 0;">
+                                    Round ${r.round || '-'} | ${r.status === 'disputed' ? 'DISPUTED' : 'Waiting for opponent'}
+                                </p>
+                            </div>
+                            <span class="status-badge ${r.status}">${r.status === 'disputed' ? 'Disputed' : 'Pending'}</span>
+                        </div>
+                        
+                        <div class="result-submissions">
+                            <div class="submission ${r.player1?.submitted ? 'submitted' : ''}">
+                                <div class="submission-header">
+                                    <strong>${r.player1?.user?.username || 'Player 1'}</strong>
+                                    ${r.player1?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
+                                </div>
+                                ${r.player1?.submitted ? `
+                                    <div class="submission-score">${r.player1?.submission?.score1} - ${r.player1?.submission?.score2}</div>
+                                    <div class="submission-winner">Winner: ${r.player1?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
+                                ` : '<span class="not-submitted">Not submitted</span>'}
+                            </div>
+
+                            <div class="submission ${r.player2?.submitted ? 'submitted' : ''}">
+                                <div class="submission-header">
+                                    <strong>${r.player2?.user?.username || 'Player 2'}</strong>
+                                    ${r.player2?.submitted ? '<span class="status-check"></span>' : '<span class="status-wait"></span>'}
+                                </div>
+                                ${r.player2?.submitted ? `
+                                    <div class="submission-score">${r.player2?.submission?.score1} - ${r.player2?.submission?.score2}</div>
+                                    <div class="submission-winner">Winner: ${r.player2?.submission?.winner === 'player1' ? r.player1?.user?.username : r.player2?.user?.username}</div>
+                                ` : '<span class="not-submitted">Not submitted</span>'}
+                            </div>
+                        </div>
+
+                        ${r.status === 'disputed' ? `
+                            <div class="dispute-actions">
+                                <p class="dispute-warning">
+                                    ${UI.icons.warning} Results do not match! 
+                                    <span style="font-size: 0.75rem; opacity: 0.8;">
+                                        (${r.conflicts.score ? 'Score Conflict' : ''} 
+                                         ${r.conflicts.score && r.conflicts.winner ? '&' : ''} 
+                                         ${r.conflicts.winner ? 'Winner Conflict' : ''})
+                                    </span>
+                                </p>
+                                ${r.isStale ? `<p style="color: var(--danger); font-size: 0.75rem; font-weight: 700;">STALE: No activity for 30m</p>` : ''}
+                                <div class="action-buttons">
+                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player1_correct')">
+                                        ${r.player1?.user?.username} Correct
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="Pages.resolveMatch('${r.matchId}', 'player2_correct')">
+                                        ${r.player2?.user?.username} Correct
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" onclick="Pages.showCustomResolveModal('${r.matchId}', '${r.player1?.user?.username}', '${r.player2?.user?.username}')">
+                                        Custom
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                        Debug
+                                    </button>
+                                </div>
+                            </div>
+                        ` : `
+                            <p style="color: var(--gray-500); font-size: 0.875rem; margin-top: 0.5rem;">
+                                ${r.disputeReason || ''}
+                            </p>
+                            <div style="margin-top: 0.75rem;">
+                                <button class="btn btn-secondary btn-sm" onclick="Pages.showAdvancementDebug('${r.matchId}')">
+                                    Debug
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
+
+    async renderPrizeDistribution() {
+        try {
+            const tournaments = await API.getTournaments();
+            const finishedTournaments = tournaments.filter(t => t.status === 'finished');
+            
+            if (finishedTournaments.length === 0) {
+                return '<p style="color: var(--gray-500);">No finished tournaments yet.</p>';
+            }
+            
+            let html = '';
+            for (const tournament of finishedTournaments) {
+                try {
+                    const payouts = await API.getTournamentPayouts(tournament._id);
+                    html += `
+                        <div class="prize-tournament-card">
+                            <div class="prize-tournament-header">
+                                <h3>${tournament.name}</h3>
+                                <span class="prize-pool">${UI.formatCurrency(tournament.prizePool)}</span>
+                            </div>
+                            <div class="prize-winners-list">
+                                ${payouts.map(payout => `
+                                    <div class="prize-winner-item" data-payout-id="${payout._id}">
+                                        <div class="prize-winner-info">
+                                            <div class="prize-rank rank-${payout.rank}">
+                                                ${payout.rank === 1 ? '🥇' : payout.rank === 2 ? '🥈' : '🥉'} ${payout.rank}
+                                            </div>
+                                            <div class="prize-winner-details">
+                                                <strong>${payout.winner?.username || 'Unknown'}</strong>
+                                                <span class="prize-phone">${payout.phoneNumber || 'No phone number'}</span>
+                                            </div>
+                                            <div class="prize-amount">${UI.formatCurrency(payout.amount)}</div>
+                                            <div class="prize-status status-${payout.status}">${payout.status}</div>
+                                        </div>
+                                        <div class="prize-actions">
+                                            ${payout.status === 'pending' ? `
+                                                <button class="btn btn-primary btn-sm" onclick="Pages.markPayoutProcessing('${payout._id}')">
+                                                    Mark as Processing
+                                                </button>
+                                            ` : ''}
+                                            ${payout.status === 'processing' ? `
+                                                <button class="btn btn-success btn-sm" onclick="Pages.showMarkPayoutSentModal('${payout._id}')">
+                                                    Mark as Sent
+                                                </button>
+                                            ` : ''}
+                                            ${payout.status === 'completed' && !payout.confirmedByWinner ? `
+                                                <span class="status-waiting">Waiting for winner confirmation</span>
+                                            ` : ''}
+                                            ${payout.confirmedByWinner ? `
+                                                <span class="status-confirmed">✓ Confirmed by winner</span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error('Error loading payouts for tournament:', tournament.name, e);
+                }
+            }
+            return html;
+        } catch (error) {
+            console.error('Error loading prize distribution:', error);
+            return '<p class="error">Error loading prize distribution</p>';
+        }
+    },
+
+    async markPayoutProcessing(payoutId) {
+        try {
+            UI.showLoading();
+            await API.markPayoutProcessing(payoutId);
+            UI.showToast('Payout marked as processing', 'success');
+            const prizeContainer = document.getElementById('prizeDistributionList');
+            if (prizeContainer) {
+                prizeContainer.innerHTML = await this.renderPrizeDistribution();
+            }
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    showMarkPayoutSentModal(payoutId) {
+        const content = `
+            <div class="modal-header">
+                <h3>Record Prize Payment</h3>
+                <button class="close-btn" onclick="UI.closeModal()">&times;</button>
+            </div>
+            <form id="payoutSentForm" style="padding: 1.5rem;">
+                <div class="form-group">
+                    <label>Transaction ID / M-Pesa Code</label>
+                    <input type="text" name="transactionId" placeholder="QJ7G9XYZ" required>
+                </div>
+                <div class="form-group">
+                    <label>Notes (Optional)</label>
+                    <textarea name="notes" rows="2" placeholder="Any additional notes..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Confirm Payment Sent</button>
+            </form>
+        `;
+        const modal = UI.showModal(content);
+        document.getElementById('payoutSentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                UI.showLoading();
+                await API.markPayoutSent(payoutId, formData.get('transactionId'), formData.get('notes'));
+                UI.closeModal();
+                UI.showToast('Payment recorded as sent', 'success');
+                const prizeContainer = document.getElementById('prizeDistributionList');
+                if (prizeContainer) {
+                    prizeContainer.innerHTML = await this.renderPrizeDistribution();
+                }
+            } catch (error) {
+                UI.showToast(error.message, 'error');
+            } finally {
+                UI.hideLoading();
+            }
+        });
+    },
+
+    switchAdminTab(tabName) {
+        document.querySelectorAll('.admin-tab').forEach(tab => tab.style.display = 'none');
+        const targetTab = document.getElementById(`admin-${tabName}`);
+        if (targetTab) targetTab.style.display = 'block';
+        
+        document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active'));
+        if (event?.target) {
+            event.target.closest('a').classList.add('active');
         }
     },
 
@@ -1283,6 +1443,21 @@ const Pages = {
                 ${UI.createFormGroup('Admin Phone (M-Pesa)', 'tel', 'adminPhone', '2547XXXXXXXX')}
                 ${UI.createFormGroup('WhatsApp Group Link', 'url', 'whatsappLink', 'https://chat.whatsapp.com/...', false)}
                 
+                <div class="form-row">
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="isFree" name="isFree">
+                            Free Tournament (no entry fee, no payment verification)
+                        </label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="autoStart" name="autoStart">
+                            Auto-start when max players reached
+                        </label>
+                    </div>
+                </div>
+                
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Tournament</button>
             </form>
         `;
@@ -1316,7 +1491,9 @@ const Pages = {
                     entryFee: parseInt(formData.get('entryFee')),
                     startDate: formData.get('startDate'),
                     adminPhone: formData.get('adminPhone'),
-                    whatsappLink: formData.get('whatsappLink')
+                    whatsappLink: formData.get('whatsappLink'),
+                    isFree: formData.get('isFree') === 'on',
+                    autoStart: formData.get('autoStart') === 'on'
                 });
                 UI.closeModal();
                 UI.showToast('Tournament created!', 'success');
@@ -1333,7 +1510,7 @@ const Pages = {
         const format = document.getElementById('formatSelect').value;
         const container = document.getElementById('dynamicSettings');
         const description = document.getElementById('formatDescription');
-        const formatInfo = this.TOURNAMENT_FORMATS[format];
+        const formatInfo = this.TOURNAMENT_FORMATS[format] || this.TOURNAMENT_FORMATS.single_elimination;
 
         description.textContent = formatInfo.description;
 
@@ -1358,7 +1535,7 @@ const Pages = {
             `,
             double_elimination: `
                 <div class="form-group">
-                    <label>Games  per Match</label>
+                    <label>Games per Match</label>
                     <select id="bestOf">
                         <option value="1">1 game (Bo1)</option>
                         <option value="3">3 games (Bo3)</option>
@@ -1600,10 +1777,9 @@ const Pages = {
 
 window.Router = Router;
 window.Pages = Pages;
+window.shareMatchResult = shareMatchResult;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 🚀 Server-First Validation: Show loading splash screen immediately.
-    // This prevents the UI from rendering stale or unauthorized data.
     if (window.UI) UI.showLoading();
 
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -1613,17 +1789,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Fetch fresh user data and verify the session with the server.
-    // The app execution pauses here until the server responds.
     await Auth.init();
 
-    // Session is verified and localStorage is synced; remove splash screen.
     if (window.UI) UI.hideLoading();
 
-    // Show chat toggle button if user is authenticated on page load
     const chatToggleBtn = document.getElementById('chatToggleBtn');
-    if (chatToggleBtn && Auth.isAuthenticated()) {
-        chatToggleBtn.style.display = 'flex';
+    if (chatToggleBtn) {
+        if (Auth.isAuthenticated()) {
+            chatToggleBtn.style.display = 'flex';
+        } else {
+            chatToggleBtn.style.display = 'none';
+        }
     }
 
     if (window.ChatApp) {

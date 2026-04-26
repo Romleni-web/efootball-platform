@@ -5,9 +5,11 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
 const Payment = require('../models/Payment');
+const ManualPayout = require('../models/ManualPayout');
 const jwt = require('jsonwebtoken');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
 const { resolveMatchResult } = require('../services/adminService');
+const PrizeDistributionService = require('../services/prizeDistributionService');
 
 // Middleware to verify token
 const auth = async (req, res, next) => {
@@ -43,7 +45,6 @@ router.get('/stats', auth, adminOnly, async (req, res) => {
         const totalPayments = await Payment.countDocuments();
         const pendingPayments = await Payment.countDocuments({ status: 'pending' });
         
-        // Calculate total revenue from approved payments
         const revenueResult = await Payment.aggregate([
             { $match: { status: { $in: ['verified', 'approved'] }, type: 'entry' } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -66,7 +67,6 @@ router.get('/stats', auth, adminOnly, async (req, res) => {
 // GET /api/admin/results/pending
 router.get('/results/pending', auth, adminOnly, async (req, res) => {
     try {
-        // Find matches with disputes or single submissions
         const pendingMatches = await Match.find({
             $or: [
                 { status: 'disputed' },
@@ -86,7 +86,6 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
         .populate('player1', 'username')
         .populate('player2', 'username');
 
-        // Format with submission info
         const formatted = pendingMatches.map(m => ({
             matchId: m._id,
             tournament: m.tournament,
@@ -109,7 +108,7 @@ router.get('/results/pending', auth, adminOnly, async (req, res) => {
             } : null,
             disputeReason: m.status === 'disputed' ? 'Results do not match' : null,
             lastActivity: m.updatedAt,
-            isStale: (new Date() - m.updatedAt) > (30 * 60 * 1000) // Flag if 30 mins old
+            isStale: (new Date() - m.updatedAt) > (30 * 60 * 1000)
         }));
 
         res.json(formatted);
@@ -202,10 +201,9 @@ router.post('/matches/:matchId/resolve', auth, adminOnly, async (req, res) => {
     }
 });
 
-// POST /api/admin/tournaments - CREATE TOURNAMENT WITH FORMAT SUPPORT
+// POST /api/admin/tournaments - CREATE TOURNAMENT (with isFree & autoStart)
 router.post('/tournaments', auth, adminOnly, [
     body('name').trim().notEmpty().withMessage('Tournament name is required'),
-    body('entryFee').isInt({ min: 0 }).withMessage('Entry fee must be a positive number'),
     body('startDate').notEmpty().withMessage('Start date is required'),
     body('adminPhone').notEmpty().withMessage('Admin phone is required')
 ], async (req, res) => {
@@ -229,10 +227,11 @@ router.post('/tournaments', auth, adminOnly, [
             startDate, 
             endDate,
             adminPhone, 
-            whatsappLink 
+            whatsappLink,
+            isFree,
+            autoStart
         } = req.body;
 
-        // Validate format
         const validFormats = ['single_elimination', 'double_elimination', 'round_robin', 'swiss', 'league'];
         const selectedFormat = format || 'single_elimination';
         
@@ -242,7 +241,6 @@ router.post('/tournaments', auth, adminOnly, [
             });
         }
 
-        // Build settings with defaults based on format
         const tournamentSettings = {
             maxPlayers: parseInt(settings?.maxPlayers) || 32,
             minPlayers: parseInt(settings?.minPlayers) || 2,
@@ -260,7 +258,9 @@ router.post('/tournaments', auth, adminOnly, [
             description: description || '',
             format: selectedFormat,
             settings: tournamentSettings,
-            entryFee: parseInt(entryFee) || 0,
+            entryFee: isFree ? 0 : (parseInt(entryFee) || 0),
+            isFree: isFree || false,
+            autoStart: autoStart || false,
             prizePool: parseInt(prizePool) || 0,
             prizeDistribution: prizeDistribution || { first: 50, second: 30, third: 20 },
             startDate: new Date(startDate),
@@ -284,8 +284,9 @@ router.post('/tournaments', auth, adminOnly, [
                 _id: tournament._id,
                 name: tournament.name,
                 format: tournament.format,
-                settings: tournament.settings,
                 entryFee: tournament.entryFee,
+                isFree: tournament.isFree,
+                autoStart: tournament.autoStart,
                 status: tournament.status,
                 createdAt: tournament.createdAt
             }
@@ -298,7 +299,7 @@ router.post('/tournaments', auth, adminOnly, [
     }
 });
 
-// POST /api/admin/tournaments/:id/start - GENERATE BRACKET
+// POST /api/admin/tournaments/:id/start
 router.post('/tournaments/:id/start', auth, adminOnly, async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
@@ -358,7 +359,7 @@ router.post('/tournaments/:id/start', auth, adminOnly, async (req, res) => {
     }
 });
 
-// POST /api/admin/send-prize - RECORD PRIZE PAYMENT
+// POST /api/admin/send-prize
 router.post('/send-prize', auth, adminOnly, async (req, res) => {
     try {
         const { tournamentId, userId, amount, mpesaNumber, transactionCode } = req.body;
@@ -382,10 +383,37 @@ router.post('/send-prize', auth, adminOnly, async (req, res) => {
     }
 });
 
-// Helper function
-function calculatePrize(pool, rank, distribution) {
-    const percentages = [distribution.first, distribution.second, distribution.third];
-    return pool * (percentages[rank - 1] || 0) / 100;
-}
+// GET /api/admin/payouts/:tournamentId
+router.get('/payouts/:tournamentId', auth, adminOnly, async (req, res) => {
+    try {
+        const payouts = await ManualPayout.find({ tournament: req.params.tournamentId })
+            .populate('winner', 'username phoneNumber email')
+            .sort({ rank: 1 });
+        res.json(payouts);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// POST /api/admin/payouts/:payoutId/processing
+router.post('/payouts/:payoutId/processing', auth, adminOnly, async (req, res) => {
+    try {
+        const payout = await PrizeDistributionService.markAsProcessing(req.params.payoutId, req.user._id);
+        res.json({ success: true, payout });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// POST /api/admin/payouts/:payoutId/sent
+router.post('/payouts/:payoutId/sent', auth, adminOnly, async (req, res) => {
+    try {
+        const { transactionId, notes } = req.body;
+        const payout = await PrizeDistributionService.markAsSent(req.params.payoutId, req.user._id, { transactionId, notes });
+        res.json({ success: true, payout });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 module.exports = router;

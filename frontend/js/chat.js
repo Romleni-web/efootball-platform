@@ -448,6 +448,62 @@ const Chat = {
         `;
     },
 
+    renderMessage(data, roomId, isHistory) {
+    const container = document.getElementById(`messages-${roomId}`);
+    const appContainer = document.getElementById(`app-messages-${roomId}`);
+    const containers = [container, appContainer].filter(c => c);
+    
+    if (containers.length === 0) return;
+
+    const isMe = data.sender?.userId === this.currentUser?._id;
+    const messageId = `msg-${data._id}`;
+    
+    if (document.getElementById(messageId)) return;
+
+    const time = this.formatTime(data.createdAt);
+    const readStatus = this.getReadStatus(data, isMe);
+    const replyHtml = data.replyTo ? this.renderReplyPreview(data.replyTo) : '';
+    const reactionsHtml = this.renderReactions(data.reactions, data._id, roomId);
+    const avatar = this.getInitials(data.sender?.username || 'U');
+
+    const messageHtml = `
+        <div class="wa-message ${isMe ? 'wa-message-me' : 'wa-message-other'}" id="${messageId}" data-message-id="${data._id}">
+            ${!isMe ? `<div class="wa-message-avatar">${avatar}</div>` : ''}
+            <div class="wa-message-content">
+                ${!isMe ? `<div class="wa-message-sender">${this.escapeHtml(data.sender?.username || 'Unknown')}</div>` : ''}
+                ${replyHtml}
+                <div class="wa-message-text">${this.escapeHtml(data.content)}</div>
+                <div class="wa-message-meta">
+                    <span class="wa-message-time">${time}</span>
+                    ${isMe ? `<span class="wa-message-status">${readStatus}</span>` : ''}
+                </div>
+                ${reactionsHtml}
+            </div>
+            <div class="wa-message-actions">
+                <button class="wa-msg-action" onclick="Chat.showMessageMenu(event, '${data._id}', '${roomId}')" title="More">
+                    ${this.icons.more}
+                </button>
+            </div>
+            <div class="wa-msg-menu" id="menu-${data._id}" style="display:none;">
+                <button onclick="Chat.setReply('${data._id}', '${roomId}')">
+                    ${this.icons.reply} Reply
+                </button>
+                ${isMe ? `<button onclick="Chat.deleteMessage('${data._id}', '${roomId}')">${this.icons.trash} Delete</button>` : ''}
+            </div>
+        </div>
+    `;
+
+    containers.forEach(container => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = messageHtml;
+        container.appendChild(tempDiv.firstElementChild);
+
+        if (!isHistory) {
+            container.scrollTop = container.scrollHeight;
+        }
+    });
+},
+
     renderReactions(reactions, messageId, roomId) {
         if (!reactions || reactions.length === 0) return '';
         

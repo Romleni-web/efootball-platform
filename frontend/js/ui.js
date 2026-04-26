@@ -93,7 +93,6 @@ const UI = {
         `;
         document.body.appendChild(overlay);
 
-        // Focus trap
         const modal = overlay.querySelector('.modal');
         const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusableElements.length) {
@@ -106,7 +105,6 @@ const UI = {
             }
         });
 
-        // Escape to close
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
                 overlay.remove();
@@ -146,6 +144,61 @@ const UI = {
         });
     },
 
+    // NEW: Join free tournament method
+    async joinFreeTournament(tournamentId) {
+        try {
+            UI.showLoading();
+            const result = await API.registerForTournament(tournamentId);
+            UI.showToast('Successfully joined tournament!', 'success');
+            Router.navigate(`tournament/${tournamentId}`);
+        } catch (error) {
+            UI.showToast(error.message, 'error');
+        } finally {
+            UI.hideLoading();
+        }
+    },
+
+    getTournamentActionButton(tournament, isRegistered) {
+        if (!Auth.isAuthenticated()) {
+            return `<button class="btn btn-primary" onclick="Router.navigate('login')">Login to Join</button>`;
+        }
+
+        if (!tournament) {
+            console.error('getTournamentActionButton received null tournament');
+            return `<button class="btn btn-secondary" disabled>Error</button>`;
+        }
+
+        if (isRegistered) {
+            const userId = Auth.getUser()?._id;
+            const player = tournament.registeredPlayers?.find(p => {
+                const playerUserId = p?.user?._id || p?.user;
+                return playerUserId?.toString() === userId?.toString();
+            });
+            
+            if (!player) {
+                console.warn('Player marked as registered but not found in array', { tournamentId: tournament._id, userId });
+                return `<span class="status-pending">${this.icons.clock} Verification Pending</span>`;
+            }
+            
+            if (player.paid) {
+                return `<button class="btn btn-success" onclick="Router.navigate('tournament/${tournament._id}')">View Details</button>`;
+            } else {
+                return `<span class="status-pending">${this.icons.clock} Payment Pending</span>`;
+            }
+        }
+
+        if (tournament.status !== 'open') {
+            return `<button class="btn btn-secondary" disabled>Registration Closed</button>`;
+        }
+
+        // NEW: Check if free tournament
+        if (tournament.isFree || tournament.entryFee === 0) {
+            return `<button class="btn btn-accent" onclick="UI.joinFreeTournament('${tournament._id}')">Join Free Tournament</button>`;
+        }
+
+        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}', ${tournament.entryFee || 0}, '${tournament.adminPhone || ''}')">Join Tournament</button>`;
+    },
+
     renderTournamentCard(tournament) {
         if (!tournament || typeof tournament !== 'object') {
             console.error('renderTournamentCard received null/invalid tournament', tournament);
@@ -153,13 +206,14 @@ const UI = {
         }
 
         const currentUser = Auth.getUser();
-        const isRegistered = tournament.registeredPlayers?.some(
-            p => p?.user?._id === currentUser?._id
-        ) || false;
+        const isRegistered = tournament.registeredPlayers?.some(p => {
+            const playerUserId = p?.user?._id || p?.user;
+            return playerUserId?.toString() === currentUser?._id?.toString();
+        }) || false;
         
         const playerCount = tournament.registeredPlayers?.length || 0;
         const maxPlayers = tournament.settings?.maxPlayers || tournament.maxPlayers || 32;
-        const prizePool = tournament.prizePool || (maxPlayers * (tournament.entryFee || 0) * 0.8);
+        const prizePool = tournament.prizePool || (maxPlayers * (tournament.entryFee || 0) * 0.9);
         
         const formatKey = tournament.format || 'single_elimination';
         const formatInfo = this.TOURNAMENT_FORMATS[formatKey] || this.TOURNAMENT_FORMATS.single_elimination;
@@ -174,6 +228,7 @@ const UI = {
                                 ${formatInfo.icon}
                                 <span>${formatInfo.name}</span>
                             </span>
+                            ${tournament.isFree ? '<span class="status-paid">FREE</span>' : ''}
                         </div>
                         <div class="prize-pool">${this.icons.trophy} ${this.formatCurrency(prizePool)}</div>
                     </div>
@@ -198,41 +253,11 @@ const UI = {
         `;
     },
 
-    getTournamentActionButton(tournament, isRegistered) {
-        if (!Auth.isAuthenticated()) {
-            return `<button class="btn btn-primary" onclick="Router.navigate('login')">Login to Join</button>`;
-        }
-
-        if (!tournament) {
-            console.error('getTournamentActionButton received null tournament');
-            return `<button class="btn btn-secondary" disabled>Error</button>`;
-        }
-
-        if (isRegistered) {
-            const userId = Auth.getUser()?._id;
-            const player = tournament.registeredPlayers?.find(p => p?.user?._id === userId);
-            
-            if (!player) {
-                console.warn('Player marked as registered but not found in array', { tournamentId: tournament._id, userId });
-                return `<span class="status-pending">${this.icons.clock} Verification Pending</span>`;
-            }
-            
-            if (player.paid) {
-                return `<button class="btn btn-success" onclick="Router.navigate('tournament/${tournament._id}')">View Details</button>`;
-            } else {
-                return `<span class="status-pending">${this.icons.clock} Payment Pending</span>`;
-            }
-        }
-
-        if (tournament.status !== 'open') {
-            return `<button class="btn btn-secondary" disabled>Registration Closed</button>`;
-        }
-
-        return `<button class="btn btn-accent" onclick="UI.showJoinModal('${tournament._id}', '${tournament.name?.replace(/'/g, "\\'") || 'Tournament'}', ${tournament.entryFee || 0}, '${tournament.adminPhone || ''}')">Join Tournament</button>`;
-    },
-
     renderAdminButtons(tournament) {
-        if (Auth.getUser()?.role !== 'admin') return '';
+        const currentUser = Auth.getUser();
+        if (!currentUser || currentUser.role !== 'admin') return '';
+        
+        if (typeof Router !== 'undefined' && Router.currentPage !== 'admin') return '';
         
         if (!tournament) return '';
         
@@ -243,7 +268,7 @@ const UI = {
                         ${this.icons.play} Start Tournament & Generate Bracket
                     </button>
                     <button class="btn btn-secondary" onclick="UI.regenerateRound('${tournament._id}', ${tournament.currentRound})">${this.icons.refresh} Generate Next Round</button>
-<button class="btn btn-secondary" onclick="UI.syncBracket('${tournament._id}')">${this.icons.refresh} Sync Bracket</button>
+                    <button class="btn btn-secondary" onclick="UI.syncBracket('${tournament._id}')">${this.icons.refresh} Sync Bracket</button>
                 </div>
             `;
         }
@@ -267,10 +292,69 @@ const UI = {
         return '';
     },
 
+    // NEW: Render winners display
+    renderWinners(tournament) {
+        if (!tournament.winners || tournament.winners.length === 0) {
+            return '<div class="empty-state"><p>Winners will be announced when tournament ends.</p></div>';
+        }
+        
+        const winnerIcons = {
+            1: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15 9H22L16 14L19 21L12 17L5 21L8 14L2 9H9L12 2Z"/></svg>',
+            2: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15 9H22L16 14L19 21L12 17L5 21L8 14L2 9H9L12 2Z"/></svg>',
+            3: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15 9H22L16 14L19 21L12 17L5 21L8 14L2 9H9L12 2Z"/></svg>'
+        };
+        
+        return `
+            <div class="winners-container">
+                <div class="winners-header">
+                    ${this.icons.trophy}
+                    <h3>Tournament Winners</h3>
+                </div>
+                <div class="winners-grid">
+                    ${tournament.winners.map(winner => `
+                        <div class="winner-card rank-${winner.rank}">
+                            <div class="winner-rank-icon">${winnerIcons[winner.rank] || winnerIcons[3]}</div>
+                            <div class="winner-rank">${winner.rank}${this.getOrdinal(winner.rank)} Place</div>
+                            <div class="winner-avatar">
+                                ${winner.player?.avatar ? 
+                                    `<img src="${winner.player.avatar}" alt="${winner.player.username}">` : 
+                                    `<div class="winner-initials">${this.getInitials(winner.player?.username)}</div>`
+                                }
+                            </div>
+                            <div class="winner-name">${winner.player?.username || 'Unknown'}</div>
+                            <div class="winner-prize">${this.formatCurrency(winner.prize)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    // NEW: Get ordinal suffix
+    getOrdinal(n) {
+        if (n === 1) return 'st';
+        if (n === 2) return 'nd';
+        if (n === 3) return 'rd';
+        return 'th';
+    },
+
+    // NEW: Get initials from name
+    getInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    },
+
     async syncBracket(tournamentId) {
-    try { UI.showLoading(); await API.syncBracket(tournamentId); UI.showToast('Bracket synced', 'success'); }
-    catch (e) { UI.showToast(e.message, 'error'); } finally { UI.hideLoading(); }
-},
+        try { 
+            UI.showLoading(); 
+            await API.syncBracket(tournamentId); 
+            UI.showToast('Bracket synced', 'success'); 
+        } catch (e) { 
+            UI.showToast(e.message, 'error'); 
+        } finally { 
+            UI.hideLoading(); 
+        }
+    },
 
     async startTournament(tournamentId) {
         if (!confirm('Start this tournament and generate bracket? This cannot be undone!')) return;
@@ -316,7 +400,7 @@ const UI = {
                         <p>Entry Fee: <strong class="accent-text">${this.formatCurrency(entryFee)}</strong></p>
                         <div class="admin-phone">${adminPhone}</div>
                         <p class="step-hint">
-                            Go to M-Pesa &rarr; Send Money &rarr; Enter number above
+                            Go to M-Pesa → Send Money → Enter number above
                         </p>
                     </div>
                 </div>
@@ -443,7 +527,6 @@ const UI = {
             return '<div class="empty-state"><p>Standings will appear once matches are played</p></div>';
         }
 
-        // Check if this is a simple ranking (Elimination) or full stats (League)
         const isFullStats = standingsData[0] && standingsData[0].played !== undefined;
 
         if (!isFullStats) {
@@ -578,6 +661,21 @@ const UI = {
                 ${this.createFormGroup('Admin Phone (M-Pesa)', 'tel', 'adminPhone', '2547XXXXXXXX')}
                 ${this.createFormGroup('WhatsApp Group Link', 'url', 'whatsappLink', 'https://chat.whatsapp.com/...', false)}
                 
+                <div class="form-row">
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="isFree" name="isFree">
+                            Free Tournament (no entry fee, no payment verification)
+                        </label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="autoStart" name="autoStart">
+                            Auto-start when max players reached
+                        </label>
+                    </div>
+                </div>
+                
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Tournament</button>
             </form>
         `;
@@ -625,7 +723,9 @@ const UI = {
                     entryFee: parseInt(formData.get('entryFee')),
                     startDate: formData.get('startDate'),
                     adminPhone: formData.get('adminPhone'),
-                    whatsappLink: formData.get('whatsappLink')
+                    whatsappLink: formData.get('whatsappLink'),
+                    isFree: formData.get('isFree') === 'on',
+                    autoStart: formData.get('autoStart') === 'on'
                 });
                 UI.closeModal();
                 UI.showToast('Tournament created!', 'success');
@@ -835,4 +935,4 @@ const UI = {
     }
 };
 
-window.UI = UI;
+window.UI = UI; 

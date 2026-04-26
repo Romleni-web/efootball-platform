@@ -50,7 +50,6 @@ const Auth = {
             `;
         }
 
-        // Re-attach event listeners
         document.querySelectorAll('[data-page]').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -67,25 +66,24 @@ const Auth = {
     },
     
     async init() {
-    const token = this.getToken();
-    if (token) {
-        try {
-            const user = await API.getMe();
-            this.setAuth(token, user);
-        } catch (error) {
-            // Only clear auth if token is actually invalid, not for network errors
-            if (error.message.includes('Token is not valid') || error.message.includes('401')) {
-                console.log('Token invalid, clearing auth');
-                this.clearAuth();
-            } else {
-                console.log('API error but keeping token:', error.message);
-                // Keep existing auth for transient errors
+        const token = this.getToken();
+        if (token) {
+            try {
+                const user = await API.getMe();
+                this.setAuth(token, user);
+            } catch (error) {
+                if (error.message.includes('Token is not valid') || 
+                    error.message.includes('401') ||
+                    error.message.includes('unauthorized')) {
+                    console.log('Token invalid, clearing auth');
+                    this.clearAuth();
+                } else {
+                    console.log('API error but keeping token:', error.message);
+                }
             }
         }
+        this.updateUI();
     }
-    this.updateUI();
-}
-    
 };
 
 window.Auth = Auth;

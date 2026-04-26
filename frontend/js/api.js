@@ -1,13 +1,25 @@
-// Auto-detect API URL - FIXED
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000/api'
-    : 'https://efootball-platform.onrender.com/api';
+// Auto-detect API URL
+const API_BASE_URL = (() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000/api';
+    }
+    if (window.location.origin.includes('render.com')) {
+        return `${window.location.origin}/api`;
+    }
+    return 'https://efootball-platform.onrender.com/api';
+})();
 
-const SOCKET_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000'
-    : 'https://efootball-platform.onrender.com';
+const SOCKET_URL = (() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+    }
+    if (window.location.origin.includes('render.com')) {
+        return window.location.origin;
+    }
+    return 'https://efootball-platform.onrender.com';
+})();
 
-console.log('API URL:', API_BASE_URL); // Debug log
+console.log('API URL:', API_BASE_URL);
 
 const API = {
     // Auth
@@ -73,15 +85,14 @@ const API = {
     },
 
     async getTournamentBracket(id) {
-        return this.authenticatedRequest(`/tournaments/${id}/bracket`);
+        const response = await fetch(`${API_BASE_URL}/tournaments/${id}/bracket`);
+        return this.handleResponse(response);
     },
 
-    // Alias for UI compatibility
-    async getBracket(tournamentId) {
-        return this.getTournamentBracket(tournamentId);
+    async getTournamentMatches(id) {
+        return this.authenticatedRequest(`/tournaments/${id}/matches`);
     },
 
-    // FIXED: Direct tournament registration (no payment needed for now)
     async registerForTournament(tournamentId) {
         return this.authenticatedRequest(`/tournaments/${tournamentId}/register`, {
             method: 'POST',
@@ -89,7 +100,6 @@ const API = {
         });
     },
 
-    // Keep old payment-based join for backward compatibility
     async joinTournament(tournamentId, paymentData) {
         const formData = new FormData();
         formData.append('tournamentId', tournamentId);
@@ -98,7 +108,6 @@ const API = {
         if (paymentData.screenshot) {
             formData.append('screenshot', paymentData.screenshot);
         }
-
         return this.authenticatedRequest('/payments/entry', {
             method: 'POST',
             body: formData
@@ -129,13 +138,11 @@ const API = {
             body: JSON.stringify(profileData)
         });
         
-        // Update stored user data immediately
         if (response.user) {
             const currentUser = Auth.getUser();
             const updatedUser = { ...currentUser, ...response.user };
             Auth.setAuth(Auth.getToken(), updatedUser);
         } else if (response.success) {
-            // Fallback: merge sent data with current user
             const currentUser = Auth.getUser();
             const updatedUser = { ...currentUser, ...profileData };
             Auth.setAuth(Auth.getToken(), updatedUser);
@@ -154,10 +161,60 @@ const API = {
         return this.handleResponse(response);
     },
 
-        // ============================================
-    // CHAT UTILITIES - WHATSAPP STYLE
-    // ============================================
+    // Share Match Card
+    async getMatchShareCard(matchId) {
+        const token = Auth.getToken();
+        const response = await fetch(`${API_BASE_URL}/matches/${matchId}/share-card`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to generate share card');
+        }
+        
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    },
 
+    async shareMatchResult(matchId) {
+        try {
+            const imageUrl = await this.getMatchShareCard(matchId);
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = `match-card-${matchId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(imageUrl);
+            return true;
+        } catch (error) {
+            console.error('Share error:', error);
+            throw new Error('Could not share match result');
+        }
+    },
+
+    // Prize Distribution
+    async getTournamentPayouts(tournamentId) {
+        return this.authenticatedRequest(`/admin/payouts/${tournamentId}`);
+    },
+
+    async markPayoutProcessing(payoutId) {
+        return this.authenticatedRequest(`/admin/payouts/${payoutId}/processing`, {
+            method: 'POST'
+        });
+    },
+
+    async markPayoutSent(payoutId, transactionId, notes) {
+        return this.authenticatedRequest(`/admin/payouts/${payoutId}/sent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transactionId, notes })
+        });
+    },
+
+    // Chat
     socket: null,
     socketReady: false,
     
@@ -179,11 +236,9 @@ const API = {
         this.socket.on('connect', () => {
             console.log('Socket connected, ID:', this.socket.id);
             this.socketReady = true;
-            // Initialize Chat module when socket connects
             if (window.Chat && !Chat.initialized) {
                 Chat.init();
             }
-            // Flush any queued messages
             if (window.Chat) {
                 Chat.flushMessageQueue();
             }
@@ -207,7 +262,6 @@ const API = {
 
     joinChat(roomId) {
         this.initSocket();
-        
         if (window.Chat) {
             if (!Chat.initialized) {
                 Chat.init();
@@ -215,8 +269,6 @@ const API = {
             Chat.joinRoom(roomId);
             return;
         }
-        
-        // Legacy fallback
         if (this.socket) {
             if (roomId === 'global') this.socket.emit('join-global');
             else this.socket.emit('join-match', roomId);
@@ -226,64 +278,53 @@ const API = {
     sendMessage(roomId, message) {
         const user = Auth.getUser();
         if (!user || !this.socket) return;
-        
         if (window.Chat && Chat.initialized) {
             return;
         }
-        
-        // Legacy fallback
         this.socket.emit('send-message', {
             roomId, message, username: user.username, type: roomId === 'global' ? 'global' : 'match'
         });
     },
 
-    // ============================================
-    // MATCH RESULT SUBMISSION - DUAL SYSTEM
-    // ============================================
-
-    // Get match status and submissions
+    // Match Results
     async getMatchStatus(matchId) {
         return this.authenticatedRequest(`/matches/${matchId}/status`);
     },
 
-    // FIXED: Submit match result - now includes tournamentId in URL
-      // api.js - FIXED
     async submitMatchResult(tournamentId, matchId, resultData) {
-    const formData = new FormData();
-    formData.append('score1', resultData.score1);
-    formData.append('score2', resultData.score2);
-    formData.append('winner', resultData.winner);
-    
-    if (resultData.notes) {
-        formData.append('notes', resultData.notes);
-    }
-    if (resultData.screenshot && resultData.screenshot.size > 0) {
-        formData.append('screenshot', resultData.screenshot);
-    }
+        const formData = new FormData();
+        formData.append('score1', resultData.score1);
+        formData.append('score2', resultData.score2);
+        formData.append('winner', resultData.winner);
+        
+        if (resultData.notes) {
+            formData.append('notes', resultData.notes);
+        }
+        
+        if (resultData.screenshot && resultData.screenshot instanceof File && resultData.screenshot.size > 0) {
+            formData.append('screenshot', resultData.screenshot);
+        }
+        
+        if (resultData.historyScreenshot && resultData.historyScreenshot instanceof File && resultData.historyScreenshot.size > 0) {
+            formData.append('historyScreenshot', resultData.historyScreenshot);
+        }
 
-    const token = Auth.getToken();
-    
-    // FIXED: Use /matches/ endpoint (has upload middleware)
-    const response = await fetch(`${API_BASE_URL}/matches/${matchId}/result`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        },
-        body: formData
-    });
-
-    return this.handleResponse(response);
+        const token = Auth.getToken();
+        const response = await fetch(`${API_BASE_URL}/matches/${matchId}/result`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        return this.handleResponse(response);
     },
-    // ============================================
-    // ADMIN - MATCH VERIFICATION
-    // ============================================
 
-    // Get pending/disputed match results for admin
+    // Admin
     async getPendingResults() {
         return this.authenticatedRequest('/admin/results/pending');
     },
 
-    // Admin resolve disputed match
     async resolveMatch(matchId, decision, data = {}) {
         return this.authenticatedRequest(`/admin/matches/${matchId}/resolve`, {
             method: 'POST',
@@ -295,10 +336,6 @@ const API = {
     async getMatchAdvancementDebug(matchId) {
         return this.authenticatedRequest(`/admin/matches/${matchId}/advancement-debug`);
     },
-
-    // ============================================
-    // ADMIN - PAYMENTS & TOURNAMENTS
-    // ============================================
 
     async getPendingPayments() {
         return this.authenticatedRequest('/payments/pending');
@@ -335,14 +372,20 @@ const API = {
     },
 
     async generateNextRound(tournamentId) {
-    return this.authenticatedRequest(`/tournaments/${tournamentId}/generate-next-round`, { method: 'POST' });
-},
-async syncBracket(tournamentId) {
-    return this.authenticatedRequest(`/tournaments/${tournamentId}/sync-bracket`, { method: 'POST' });
-},
-async updateTournamentSettings(tournamentId, settings) {
-    return this.authenticatedRequest(`/tournaments/${tournamentId}/settings`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
-},
+        return this.authenticatedRequest(`/tournaments/${tournamentId}/generate-next-round`, { method: 'POST' });
+    },
+
+    async syncBracket(tournamentId) {
+        return this.authenticatedRequest(`/tournaments/${tournamentId}/sync-bracket`, { method: 'POST' });
+    },
+
+    async updateTournamentSettings(tournamentId, settings) {
+        return this.authenticatedRequest(`/tournaments/${tournamentId}/settings`, { 
+            method: 'PATCH', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(settings) 
+        });
+    },
 
     async getAdminStats() {
         return this.authenticatedRequest('/admin/stats');
@@ -355,16 +398,11 @@ async updateTournamentSettings(tournamentId, settings) {
             body: JSON.stringify(paymentData)
         });
     },
-    
-    async getTournamentMatches(tournamentId) {
-    return this.authenticatedRequest(`/tournaments/${tournamentId}/matches`);
-   },
+
     // Helper methods
     getHeaders() {
         const token = Auth.getToken();
-        const headers = {
-            'Content-Type': 'application/json'
-        };
+        const headers = { 'Content-Type': 'application/json' };
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
@@ -386,7 +424,8 @@ async updateTournamentSettings(tournamentId, settings) {
             headers['Content-Type'] = 'application/json';
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const response = await fetch(`${API_BASE_URL}${cleanEndpoint}`, {
             ...options,
             headers
         });
