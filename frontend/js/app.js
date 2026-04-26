@@ -68,8 +68,14 @@ function executeLegacyHandlerExpression(expression, element, event) {
         if (page) Router.navigate(page);
         return;
     }
+    if (expr === 'ChatApp.toggle()') {
+        if (window.ChatApp) window.ChatApp.toggle();
+        return;
+    }
     if (expr === 'Auth.logout()') {
         Auth.logout();
+        const chatBtn = document.getElementById('chatToggleBtn');
+        if (chatBtn) chatBtn.style.display = 'none';
         return;
     }
     if (expr === 'UI.closeModal()') {
@@ -406,6 +412,8 @@ const Pages = {
                 });
                 Auth.setAuth(data.token, data.user);
                 UI.showToast('Welcome back!', 'success');
+            const chatBtn = document.getElementById('chatToggleBtn');
+            if (chatBtn) chatBtn.style.display = 'flex';
                 Router.navigate('dashboard');
             } catch (error) {
                 UI.showToast(error.message, 'error');
@@ -545,6 +553,8 @@ const Pages = {
                 });
                 Auth.setAuth(data.token, data.user);
                 UI.showToast('Account created! Welcome!', 'success');
+            const chatBtn = document.getElementById('chatToggleBtn');
+            if (chatBtn) chatBtn.style.display = 'flex';
                 Router.navigate('dashboard');
             } catch (error) {
                 UI.showToast(error.message, 'error');
@@ -1592,6 +1602,10 @@ window.Router = Router;
 window.Pages = Pages;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 🚀 Server-First Validation: Show loading splash screen immediately.
+    // This prevents the UI from rendering stale or unauthorized data.
+    if (window.UI) UI.showLoading();
+
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
@@ -1599,7 +1613,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Fetch fresh user data and verify the session with the server.
+    // The app execution pauses here until the server responds.
     await Auth.init();
+
+    // Session is verified and localStorage is synced; remove splash screen.
+    if (window.UI) UI.hideLoading();
+
+    // Show chat toggle button if user is authenticated on page load
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    if (chatToggleBtn && Auth.isAuthenticated()) {
+        chatToggleBtn.style.display = 'flex';
+    }
 
     if (window.ChatApp) {
         ChatApp.init();

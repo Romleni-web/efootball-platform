@@ -133,12 +133,12 @@ const API = {
         if (response.user) {
             const currentUser = Auth.getUser();
             const updatedUser = { ...currentUser, ...response.user };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            Auth.setAuth(Auth.getToken(), updatedUser);
         } else if (response.success) {
             // Fallback: merge sent data with current user
             const currentUser = Auth.getUser();
             const updatedUser = { ...currentUser, ...profileData };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            Auth.setAuth(Auth.getToken(), updatedUser);
         }
         
         return response;

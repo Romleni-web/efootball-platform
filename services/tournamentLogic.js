@@ -311,7 +311,8 @@ class SingleEliminationLogic extends TournamentLogic {
             await tournament.save();
         }
         
-        return savedMatches;
+        // 🔧 FIX: Return a single match (the first one) instead of the array
+        return savedMatches.length > 0 ? savedMatches[0] : null;
     }
 
     /**
@@ -363,7 +364,7 @@ class SingleEliminationLogic extends TournamentLogic {
             await tournament.save();
         }
         
-        return [saved];
+        return saved;
     }
 
     /**
