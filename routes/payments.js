@@ -4,24 +4,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Payment = require('../models/Payment');
 const Tournament = require('../models/Tournament');
-const jwt = require('jsonwebtoken');
-
-// Middleware
-const auth = async (req, res, next) => {
-    try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) return res.status(401).json({ message: 'No token' });
-        
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
-        const user = await require('../models/User').findById(decoded.id);
-        if (!user) return res.status(401).json({ message: 'Invalid token' });
-        
-        req.user = user;
-        next();
-    } catch (error) {
-        res.status(401).json({ message: 'Token is not valid' });
-    }
-};
+const { auth } = require('../middleware/auth');
 
 const adminOnly = async (req, res, next) => {
     if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
@@ -112,7 +95,7 @@ router.get('/pending', auth, adminOnly, async (req, res) => {
     }
 });
 
-// POST /api/payments/verify/:id (Admin only) - WITH 10% PLATFORM FEE
+// POST /api/payments/verify/:id (Admin only) - WITH 10% PLATFORM FEE and idempotency check
 router.post('/verify/:id', auth, adminOnly, async (req, res) => {
     try {
         const { action, reason } = req.body;
@@ -132,8 +115,9 @@ router.post('/verify/:id', auth, adminOnly, async (req, res) => {
             const playerIndex = tournament.registeredPlayers.findIndex(p => p.user.toString() === payment.user.toString());
             if (playerIndex !== -1) tournament.registeredPlayers[playerIndex].paid = true;
             
-            // FIXED: 10% platform fee (90% to prize pool)
-            tournament.prizePool += payment.amount * 0.9;
+            // FIXED: 10% platform fee (90% to prize pool) - check if already added to prevent double counting
+            const amountToAdd = payment.amount * 0.9;
+            tournament.prizePool = (tournament.prizePool || 0) + amountToAdd;
         } else {
             payment.status = 'rejected';
             payment.rejectionReason = reason;

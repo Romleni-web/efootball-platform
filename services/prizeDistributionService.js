@@ -16,10 +16,12 @@ class PrizeDistributionService {
         for (const winner of tournament.winners) {
             if (!winner.prize || winner.prize <= 0) continue;
 
-            const existing = await ManualPayout.findOne({
+            // Use findOne with upsert pattern to prevent race conditions
+            let existing = await ManualPayout.findOne({
                 tournament: tournamentId,
                 winner: winner.player._id
             });
+            
             if (existing) {
                 payouts.push(existing);
                 continue;
@@ -33,8 +35,14 @@ class PrizeDistributionService {
                 phoneNumber: winner.player.phoneNumber || 'PENDING',
                 status: 'pending'
             });
-            await payout.save();
-            payouts.push(payout);
+            
+            // Use findOneAndUpdate with upsert to handle race condition
+            const savedPayout = await ManualPayout.findOneAndUpdate(
+                { tournament: tournamentId, winner: winner.player._id },
+                payout.toObject(),
+                { upsert: true, new: true }
+            );
+            payouts.push(savedPayout);
         }
 
         tournament.prizeDistributionStatus = 'pending';

@@ -47,17 +47,20 @@ const Chat = {
             this.setupSocketListeners();
         } else {
             console.log('Socket not ready, will retry...');
-            // Retry after socket connects
+            // Retry after socket connects - check more frequently
+            let retryCount = 0;
             const checkSocket = setInterval(() => {
+                retryCount++;
                 if (API.socket) {
-                    console.log('Socket now available');
+                    console.log('Socket now available after', retryCount, 'retries');
                     this.socket = API.socket;
                     this.setupSocketListeners();
                     clearInterval(checkSocket);
+                } else if (retryCount > 40) {
+                    console.error('Socket failed to initialize after timeout');
+                    clearInterval(checkSocket);
                 }
-            }, 500);
-            // Stop checking after 10 seconds
-            setTimeout(() => clearInterval(checkSocket), 10000);
+            }, 250);
         }
     },
 
@@ -365,15 +368,18 @@ const Chat = {
 
         room.messages = data.messages || [];
         
-        const container = document.getElementById(`messages-${roomId}`);
-        const loadingEl = document.getElementById(`loading-${roomId}`);
-        if (loadingEl) loadingEl.remove();
+        // Handle both regular chat and app chat containers
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        containers.forEach(container => {
+            const loadingEl = container.querySelector(`#loading-${roomId}, #app-loading-${roomId}`);
+            if (loadingEl) loadingEl.remove();
+        });
 
         data.messages.forEach(msg => this.renderMessage(msg, roomId, true));
 
-        if (container) {
+        containers.forEach(container => {
             container.scrollTop = container.scrollHeight;
-        }
+        });
 
         const unreadIds = data.messages
             .filter(m => !m.readBy?.some(r => r.userId === this.currentUser?._id))
@@ -385,12 +391,17 @@ const Chat = {
     },
 
     renderMessage(data, roomId, isHistory) {
-        const container = document.getElementById(`messages-${roomId}`);
-        if (!container) return;
+        // Get both possible container types
+        const containers = document.querySelectorAll(`#messages-${roomId}, #app-messages-${roomId}`);
+        if (!containers || containers.length === 0) {
+            console.warn('No container found for room:', roomId);
+            return;
+        }
 
         const isMe = data.sender?.userId === this.currentUser?._id;
         const messageId = `msg-${data._id}`;
         
+        // Check if message already rendered
         if (document.getElementById(messageId)) return;
 
         const time = this.formatTime(data.createdAt);

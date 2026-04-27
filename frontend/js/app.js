@@ -1791,6 +1791,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await Auth.init();
 
+    // Initialize socket connection for chat
+    if (window.API && typeof window.API.initSocket === 'function') {
+        console.log('Initializing socket for chat...');
+        API.initSocket();
+    }
+
     if (window.UI) UI.hideLoading();
 
     const chatToggleBtn = document.getElementById('chatToggleBtn');

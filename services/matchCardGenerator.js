@@ -3,15 +3,12 @@ const sharp = require('sharp');
 
 class MatchCardGenerator {
     async generateCard(matchData) {
-        const {
-            player1Name,
-            player2Name,
-            score1,
-            score2,
-            winner,
-            tournamentName,
-            date
-        } = matchData;
+        // Validate required fields
+        const { player1Name, player2Name, score1, score2, winner, tournamentName, date } = matchData;
+        
+        if (!player1Name || !player2Name || score1 === undefined || score2 === undefined || !winner || !tournamentName || !date) {
+            throw new Error('Missing required match data: player1Name, player2Name, score1, score2, winner, tournamentName, date');
+        }
 
         const isPlayer1Winner = winner === player1Name;
         const isPlayer2Winner = winner === player2Name;

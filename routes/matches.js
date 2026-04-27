@@ -83,17 +83,25 @@ router.post('/:id/result', auth, upload.fields([
             return res.status(400).json({ message: 'Scores cannot be tied' });
         }
 
-        const expectedWinner = parseInt(score1) > parseInt(score2) ? 'player1' : 'player2';
+        // Ensure scores are properly converted to integers
+        const score1Int = parseInt(score1);
+        const score2Int = parseInt(score2);
+        
+        if (isNaN(score1Int) || isNaN(score2Int)) {
+            return res.status(400).json({ message: 'Invalid scores - must be numbers' });
+        }
+
+        const expectedWinner = score1Int > score2Int ? 'player1' : 'player2';
         if (winner !== expectedWinner) {
             return res.status(400).json({ message: 'Winner does not match scores' });
         }
 
         const playerKey = isPlayer1 ? 'player1' : 'player2';
 
-        // Build submission data
+        // Build submission data with properly validated integers
         const submissionData = {
-            score1: parseInt(score1),
-            score2: parseInt(score2),
+            score1: score1Int,
+            score2: score2Int,
             winner: winner,
             notes: notes || '',
             submittedAt: new Date(),

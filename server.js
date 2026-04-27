@@ -13,9 +13,29 @@ const logger = require('./utils/logger')('Server');
 
 // Security middleware FIRST
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'])
-        : '*',
+    origin: (origin, callback) => {
+        // Parse allowed origins from environment variable
+        let allowedOrigins = [];
+        
+        if (process.env.NODE_ENV === 'production') {
+            // In production, use ALLOWED_ORIGINS from env or default to self
+            const envOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+            allowedOrigins = [...envOrigins];
+            if (process.env.APP_URL) {
+                allowedOrigins.push(process.env.APP_URL);
+            }
+        } else {
+            // In development, allow localhost and common dev URLs
+            allowedOrigins = ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
+        }
+
+        // Always allow no origin (for mobile apps, Postman, etc.)
+        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 };

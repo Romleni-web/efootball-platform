@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is not defined. Please set it before starting the server.');
+    }
+    return secret;
+};
+
 const auth = async (req, res, next) => {
     try {
         const authHeader = req.header('Authorization');
@@ -11,7 +19,7 @@ const auth = async (req, res, next) => {
             return res.status(401).json({ message: 'No token, authorization denied' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
+        const decoded = jwt.verify(token, getJwtSecret());
         
         const userId = decoded.id || decoded._id || decoded.userId;
         

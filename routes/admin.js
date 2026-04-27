@@ -6,27 +6,10 @@ const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
 const Payment = require('../models/Payment');
 const ManualPayout = require('../models/ManualPayout');
-const jwt = require('jsonwebtoken');
 const { TournamentLogicFactory } = require('../services/tournamentLogic');
 const { resolveMatchResult } = require('../services/adminService');
 const PrizeDistributionService = require('../services/prizeDistributionService');
-
-// Middleware to verify token
-const auth = async (req, res, next) => {
-    try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) return res.status(401).json({ message: 'No token' });
-        
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'efootball_secret_key');
-        const user = await User.findById(decoded.id);
-        if (!user) return res.status(401).json({ message: 'Invalid token' });
-        
-        req.user = user;
-        next();
-    } catch (error) {
-        res.status(401).json({ message: 'Token is not valid' });
-    }
-};
+const { auth } = require('../middleware/auth');
 
 // Admin middleware
 const adminOnly = async (req, res, next) => {

@@ -9,8 +9,16 @@ const { sendResetEmail } = require('../services/emailService');
 const logger = require('../utils/logger')('AuthRoute');
 
 // Generate JWT
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is not defined. Please set it before starting the server.');
+    }
+    return secret;
+};
+
 const generateToken = (userId) => {
-    return jwt.sign({ id: userId.toString() }, process.env.JWT_SECRET || 'efootball_secret_key', {
+    return jwt.sign({ id: userId.toString() }, getJwtSecret(), {
         expiresIn: '7d'
     });
 };
